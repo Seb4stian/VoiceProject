@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Recorder</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.25rem;
+      color: #2d3748;
+    }
+
+    p.subtitle {
+      color: #718096;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      padding: 2rem;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .65rem 1.4rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    #btnRecord  { background: #e53e3e; color: #fff; }
+    #btnStop    { background: #2d3748; color: #fff; }
+    #btnDiscard { background: #718096; color: #fff; }
+    #btnSave    { background: #38a169; color: #fff; }
+
+    /* ── Status ── */
+    #status {
+      text-align: center;
+      font-size: .9rem;
+      color: #718096;
+      margin-bottom: 1.5rem;
+      min-height: 1.2em;
+    }
+
+    /* ── Preview player ── */
+    #preview {
+      width: 100%;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    /* ── Recordings list ── */
+    h2 {
+      font-size: 1.1rem;
+      color: #2d3748;
+      margin-bottom: .75rem;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 1.25rem;
+    }
+
+    #recordings-list {
+      list-style: none;
+    }
+
+    #recordings-list li {
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+      padding: .75rem 0;
+      border-bottom: 1px solid #f0f4f8;
+    }
+
+    #recordings-list li:last-child { border-bottom: none; }
+
+    .rec-name {
+      font-size: .8rem;
+      color: #a0aec0;
+      word-break: break-all;
+    }
+
+    .rec-player {
+      width: 100%;
+    }
+
+    #noRecordings {
+      color: #a0aec0;
+      font-size: .9rem;
+      text-align: center;
+      padding: .5rem 0;
+    }
+
+    /* ── Pulse animation while recording ── */
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(229,62,62,.4); }
+      50%       { box-shadow: 0 0 0 10px rgba(229,62,62,0); }
+    }
+    #btnRecord.recording { animation: pulse 1.2s infinite; }
+  </style>
+</head>
+<body>
+  <h1>🎙 Voice Recorder</h1>
+  <p class="subtitle">Record, save and replay your voice directly in the browser</p>
+
+  <div class="card">
+    <!-- Controls -->
+    <div class="controls">
+      <button id="btnRecord">&#9679; Record</button>
+      <button id="btnStop"    disabled>&#9632; Stop</button>
+    </div>
+
+    <!-- Status -->
+    <div id="status">Press <strong>Record</strong> to start.</div>
+
+    <!-- Preview before saving -->
+    <audio id="preview" controls></audio>
+
+    <!-- Save / Discard -->
+    <div class="controls" id="saveControls" style="display:none;">
+      <button id="btnDiscard">&#10005; Discard</button>
+      <button id="btnSave">&#10003; Save to server</button>
+    </div>
+
+    <!-- Saved recordings -->
+    <h2>Saved recordings</h2>
+    <ul id="recordings-list">
+      <li id="noRecordings">No recordings yet.</li>
+    </ul>
+  </div>
+
+  <script>
+    const btnRecord  = document.getElementById('btnRecord');
+    const btnStop    = document.getElementById('btnStop');
+    const btnSave    = document.getElementById('btnSave');
+    const btnDiscard = document.getElementById('btnDiscard');
+    const preview    = document.getElementById('preview');
+    const status     = document.getElementById('status');
+    const saveControls = document.getElementById('saveControls');
+    const list       = document.getElementById('recordings-list');
+
+    let mediaRecorder = null;
+    let chunks        = [];
+    let blob          = null;
+
+    // ── Load recordings on startup ──────────────────────────────────────────
+    async function loadRecordings() {
+      const res  = await fetch('/recordings');
+      const files = await res.json();
+      const noRec = document.getElementById('noRecordings');
+
+      if (files.length === 0) {
+        if (!noRec) {
+          list.innerHTML = '<li id="noRecordings">No recordings yet.</li>';
+        }
+        return;
+      }
+
+      list.innerHTML = '';
+      files.forEach(filename => addRecordingToList(filename));
+    }
+
+    function addRecordingToList(filename) {
+      const noRec = document.getElementById('noRecordings');
+      if (noRec) noRec.remove();
+
+      const li     = document.createElement('li');
+      const name   = document.createElement('div');
+      const audio  = document.createElement('audio');
+
+      name.className   = 'rec-name';
+      name.textContent = filename;
+
+      audio.className  = 'rec-player';
+      audio.controls   = true;
+      audio.src        = `/recordings/${encodeURIComponent(filename)}`;
+
+      li.prepend(audio);
+      li.prepend(name);
+      list.prepend(li);   // newest first
+    }
+
+    // ── Record ───────────────────────────────────────────────────────────────
+    btnRecord.addEventListener('click', async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus('⚠️ Your browser does not support audio recording.', 'error');
+        return;
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        setStatus('⚠️ Microphone access denied: ' + err.message, 'error');
+        return;
+      }
+
+      chunks = [];
+      blob   = null;
+      preview.style.display = 'none';
+      saveControls.style.display = 'none';
+
+      // Pick the best supported MIME type
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(
+        m => MediaRecorder.isTypeSupported(m)
+      ) || '';
+
+      if (!mimeType) {
+        console.warn('No preferred MIME type supported; falling back to browser default. Recording may vary.');
+      }
+
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        preview.src = url;
+        preview.style.display = 'block';
+        saveControls.style.display = 'flex';
+        setStatus('Recording complete. Preview below, then save or discard.');
+      };
+
+      mediaRecorder.start();
+      btnRecord.classList.add('recording');
+      btnRecord.disabled = true;
+      btnStop.disabled   = false;
+      setStatus('🔴 Recording…');
+    });
+
+    // ── Stop ─────────────────────────────────────────────────────────────────
+    btnStop.addEventListener('click', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      btnRecord.classList.remove('recording');
+      btnRecord.disabled = false;
+      btnStop.disabled   = true;
+    });
+
+    // ── Discard ───────────────────────────────────────────────────────────────
+    btnDiscard.addEventListener('click', () => {
+      blob = null;
+      preview.src          = '';
+      preview.style.display = 'none';
+      saveControls.style.display = 'none';
+      setStatus('Recording discarded. Press <strong>Record</strong> to start again.');
+    });
+
+    // ── Save ──────────────────────────────────────────────────────────────────
+    btnSave.addEventListener('click', async () => {
+      if (!blob) return;
+
+      btnSave.disabled    = true;
+      btnDiscard.disabled = true;
+      setStatus('Uploading…');
+
+      const mimeUsed = mediaRecorder.mimeType || 'audio/webm';
+      let ext = 'webm';
+      try {
+        ext = mimeUsed.split('/')[1].split(';')[0] || 'webm';
+      } catch (_) {
+        ext = 'webm';
+      }
+      const form = new FormData();
+      form.append('audio', blob, `recording.${ext}`);
+
+      try {
+        const res  = await fetch('/upload', { method: 'POST', body: form });
+        const data = await res.json();
+
+        if (res.ok) {
+          setStatus('✅ Saved as <strong>' + data.filename + '</strong>');
+          addRecordingToList(data.filename);
+        } else {
+          setStatus('⚠️ Upload failed: ' + (data.error || res.statusText), 'error');
+        }
+      } catch (err) {
+        setStatus('⚠️ Network error: ' + err.message, 'error');
+      }
+
+      blob = null;
+      preview.src          = '';
+      preview.style.display = 'none';
+      saveControls.style.display = 'none';
+      btnSave.disabled    = false;
+      btnDiscard.disabled = false;
+    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function setStatus(msg, type) {
+      status.innerHTML = msg;
+      status.style.color = type === 'error' ? '#e53e3e' : '#718096';
+    }
+
+    // Initial load
+    loadRecordings();
+  </script>
+</body>
+</html>

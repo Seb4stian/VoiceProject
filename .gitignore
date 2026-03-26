@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Recordings — keep the folder itself (.gitkeep) but ignore audio files
+recordings/*.webm
+recordings/*.ogg
+recordings/*.wav
+recordings/*.mp4
+
+# Flask instance / debug
+instance/
+.flask_session/
