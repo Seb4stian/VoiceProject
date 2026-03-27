@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Speech to Text</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; color: #2d3748; }
+    p.subtitle { color: #718096; margin-bottom: 2rem; }
+
+    nav { margin-bottom: 1.5rem; display: flex; gap: 1.5rem; }
+    nav a {
+      color: #3182ce;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    nav a:hover { text-decoration: underline; }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      padding: 2rem;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: .5rem;
+      color: #2d3748;
+    }
+
+    select {
+      width: 100%;
+      padding: .65rem .75rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      background: #fff;
+      color: #333;
+      cursor: pointer;
+      transition: border-color .2s;
+      margin-bottom: 1rem;
+    }
+    select:focus { outline: none; border-color: #3182ce; }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: .75rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      resize: vertical;
+      margin-top: 1rem;
+    }
+    textarea:focus { outline: none; border-color: #3182ce; }
+
+    .controls { display: flex; gap: 1rem; justify-content: center; margin-top: 1rem; }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .65rem 1.4rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    #btnRecord { background: #e53e3e; color: #fff; }
+    #btnStop   { background: #2d3748; color: #fff; }
+
+    #status {
+      text-align: center;
+      font-size: .9rem;
+      color: #718096;
+      margin-top: 1rem;
+      min-height: 1.2em;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(229,62,62,.4); }
+      50%       { box-shadow: 0 0 0 10px rgba(229,62,62,0); }
+    }
+    #btnRecord.recording { animation: pulse 1.2s infinite; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid #718096;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 Speech to Text</h1>
+  <p class="subtitle">Record your voice and see it transcribed to text</p>
+  <nav>
+    <a href="/">← Voice Recorder</a>
+    <a href="/tts">🔊 Text to Speech</a>
+  </nav>
+
+  <div class="card">
+    <label for="langSelect">Language:</label>
+    <select id="langSelect">
+      <option value="en">🇬🇧 English</option>
+      <option value="de">🇩🇪 German</option>
+      <option value="ja">🇯🇵 Japanese</option>
+    </select>
+
+    <div class="controls">
+      <button id="btnRecord">&#9679; Record</button>
+      <button id="btnStop" disabled>&#9632; Stop</button>
+    </div>
+
+    <div id="status">Press <strong>Record</strong> to start.</div>
+
+    <label for="transcriptBox" style="margin-top:1.5rem">Transcription:</label>
+    <textarea id="transcriptBox" readonly placeholder="Your transcribed text will appear here…"></textarea>
+  </div>
+
+  <script>
+    const btnRecord     = document.getElementById('btnRecord');
+    const btnStop       = document.getElementById('btnStop');
+    const langSelect    = document.getElementById('langSelect');
+    const statusEl      = document.getElementById('status');
+    const transcriptBox = document.getElementById('transcriptBox');
+
+    let mediaRecorder = null;
+    let chunks = [];
+
+    function setStatus(msg, type) {
+      statusEl.innerHTML = msg;
+      statusEl.style.color = type === 'error' ? '#e53e3e' : '#718096';
+    }
+
+    btnRecord.addEventListener('click', async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus('⚠️ Your browser does not support audio recording.', 'error');
+        return;
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        setStatus('⚠️ Microphone access denied: ' + err.message, 'error');
+        return;
+      }
+
+      chunks = [];
+      transcriptBox.value = '';
+
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(
+        m => MediaRecorder.isTypeSupported(m)
+      ) || '';
+
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+
+        const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const ext  = (mediaRecorder.mimeType || 'audio/webm').split('/')[1].split(';')[0] || 'webm';
+
+        setStatus('<span class="spinner"></span> Transcribing…');
+        btnRecord.disabled = true;
+
+        const form = new FormData();
+        form.append('audio', blob, `recording.${ext}`);
+        form.append('language', langSelect.value);
+
+        try {
+          const res  = await fetch('/stt/transcribe', { method: 'POST', body: form });
+          const data = await res.json();
+
+          if (res.ok) {
+            transcriptBox.value = data.text;
+            setStatus('✅ Transcription complete');
+          } else {
+            setStatus('⚠️ ' + (data.error || 'Transcription failed'), 'error');
+          }
+        } catch (err) {
+          setStatus('⚠️ Network error: ' + err.message, 'error');
+        }
+
+        btnRecord.disabled = false;
+      };
+
+      mediaRecorder.start();
+      btnRecord.classList.add('recording');
+      btnRecord.disabled = true;
+      btnStop.disabled   = false;
+      setStatus('🔴 Recording…');
+    });
+
+    btnStop.addEventListener('click', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      btnRecord.classList.remove('recording');
+      btnRecord.disabled = false;
+      btnStop.disabled   = true;
+    });
+  </script>
+</body>
+</html>

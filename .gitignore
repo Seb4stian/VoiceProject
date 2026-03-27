@@ -28,4 +28,7 @@ recordings/*.mp4
 
 # Flask instance / debug
 instance/
+
+# Environment variables — never commit secrets
+.env
 .flask_session/

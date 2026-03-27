@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Text to Speech</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; color: #2d3748; }
+
+    p.subtitle { color: #718096; margin-bottom: 2rem; }
+
+    nav {
+      margin-bottom: 1.5rem;
+    }
+    nav a {
+      color: #3182ce;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    nav a:hover { text-decoration: underline; }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      padding: 2rem;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: .5rem;
+      color: #2d3748;
+    }
+
+    select {
+      width: 100%;
+      padding: .65rem .75rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      background: #fff;
+      color: #333;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+    select:focus {
+      outline: none;
+      border-color: #3182ce;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: .75rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      resize: vertical;
+      transition: border-color .2s;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #3182ce;
+    }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .65rem 1.4rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    #btnSpeak {
+      background: #3182ce;
+      color: #fff;
+      margin-top: 1rem;
+      width: 100%;
+      justify-content: center;
+    }
+
+    #status {
+      text-align: center;
+      font-size: .9rem;
+      color: #718096;
+      margin-top: 1rem;
+      min-height: 1.2em;
+    }
+
+    #audioPlayer {
+      width: 100%;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    /* spinner animation */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid #fff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔊 Text to Speech</h1>
+  <p class="subtitle">Type text and hear it read aloud in your cloned voice</p>
+  <nav><a href="/">← Back to Voice Recorder</a> &nbsp;|&nbsp; <a href="/stt">🎤 Speech-to-Text</a></nav>
+
+  <div class="card">
+    <label for="langSelect">Language:</label>
+    <select id="langSelect">
+      <option value="en">🇬🇧 English</option>
+      <option value="de">🇩🇪 German</option>
+      <option value="ja">🇯🇵 Japanese</option>
+    </select>
+
+    <label for="textInput" style="margin-top:1rem">Enter text to read:</label>
+    <textarea id="textInput" placeholder="Type something here…"></textarea>
+
+    <button id="btnSpeak">&#9654; Read Aloud</button>
+
+    <div id="status"></div>
+    <audio id="audioPlayer" controls></audio>
+  </div>
+
+  <script>
+    const btnSpeak    = document.getElementById('btnSpeak');
+    const textInput   = document.getElementById('textInput');
+    const langSelect  = document.getElementById('langSelect');
+    const statusEl    = document.getElementById('status');
+    const audioPlayer = document.getElementById('audioPlayer');
+
+    function setStatus(msg, type) {
+      statusEl.innerHTML = msg;
+      statusEl.style.color = type === 'error' ? '#e53e3e' : '#718096';
+    }
+
+    btnSpeak.addEventListener('click', async () => {
+      const text = textInput.value.trim();
+      if (!text) {
+        setStatus('⚠️ Please enter some text first.', 'error');
+        return;
+      }
+
+      btnSpeak.disabled = true;
+      btnSpeak.innerHTML = '<span class="spinner"></span> Generating…';
+      audioPlayer.style.display = 'none';
+      setStatus('Sending text to ElevenLabs…');
+
+      try {
+        const res = await fetch('/tts/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, language: langSelect.value }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          setStatus('⚠️ ' + (err.error || 'Something went wrong.'), 'error');
+          return;
+        }
+
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+
+        audioPlayer.src = url;
+        audioPlayer.style.display = 'block';
+        audioPlayer.play();
+        setStatus('✅ Playing audio');
+      } catch (err) {
+        setStatus('⚠️ Network error: ' + err.message, 'error');
+      } finally {
+        btnSpeak.disabled = false;
+        btnSpeak.innerHTML = '&#9654; Read Aloud';
+      }
+    });
+  </script>
+</body>
+</html>
