@@ -1,0 +1,98 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f0f4f8;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+
+h1 { font-size: 2rem; margin-bottom: 0.25rem; color: #2d3748; }
+p.subtitle { color: #718096; margin-bottom: 2rem; text-align: center; max-width: 560px; }
+
+nav { margin-bottom: 1.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
+nav a { color: #3182ce; text-decoration: none; font-weight: 600; }
+nav a:hover { text-decoration: underline; }
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.08);
+  padding: 2rem;
+  width: 100%;
+  max-width: 620px;
+}
+
+/* ── Contributors grid ── */
+.contributors {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.contributor {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.contributor:hover {
+  border-color: #3182ce;
+  box-shadow: 0 2px 12px rgba(49,130,206,.12);
+}
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #3182ce;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.contributor-info { flex: 1; }
+
+.contributor-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: .15rem;
+}
+
+.contributor-role {
+  font-size: .9rem;
+  color: #718096;
+  margin-bottom: .35rem;
+}
+
+.contributor-email a {
+  font-size: .85rem;
+  color: #3182ce;
+  text-decoration: none;
+}
+.contributor-email a:hover { text-decoration: underline; }
+.contributor-email .separator { color: #a0aec0; margin: 0 .35rem; }
+
+/* ── Project info ── */
+.project-info {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+  color: #718096;
+  font-size: .9rem;
+  line-height: 1.6;
+}
+.project-info strong { color: #2d3748; }

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — VoiceProject</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/about.css') }}" />
+</head>
+<body>
+  <h1>ℹ️ About VoiceProject</h1>
+  <p class="subtitle">An integrated voice &amp; AI platform for emotional well-being</p>
+  <nav>
+    <a href="/">🎙 Recorder</a>
+    <a href="/tts">🔊 TTS</a>
+    <a href="/stt">🎤 STT</a>
+    <a href="/sentiment">📊 Sentiment</a>
+    <a href="/chat">🧠 Chat</a>
+    <a href="/voice-chat">🎙🧠 Voice Chat</a>
+  </nav>
+
+  <div class="card">
+    <div class="contributors">
+
+      <div class="contributor">
+        <div class="avatar">JG</div>
+        <div class="contributor-info">
+          <div class="contributor-name">Javier Gonzalez</div>
+          <div class="contributor-role">CEO</div>
+          <div class="contributor-email">
+            <a href="mailto:javier@chelenko.com">javier@chelenko.com</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="contributor">
+        <div class="avatar">JG</div>
+        <div class="contributor-info">
+          <div class="contributor-name">Julio Gomez</div>
+          <div class="contributor-role">Senior FullStack Software Engineer</div>
+          <div class="contributor-email">
+            <a href="mailto:gomezjulio909@gmail.com">gomezjulio909@gmail.com</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="contributor">
+        <div class="avatar">FM</div>
+        <div class="contributor-info">
+          <div class="contributor-name">Francisco Maldonado</div>
+          <div class="contributor-role">Senior FullStack Software Engineer</div>
+          <div class="contributor-email">
+            <a href="mailto:francisco.maldonado.campos@gmail.com">francisco.maldonado.campos@gmail.com</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="contributor">
+        <div class="avatar">EC</div>
+        <div class="contributor-info">
+          <div class="contributor-name">Eduardo Castro Puello</div>
+          <div class="contributor-role">AI Architect</div>
+          <div class="contributor-email">
+            <a href="mailto:ing.eduardo.castro@gmail.com">ing.eduardo.castro@gmail.com</a>
+            <span class="separator">·</span>
+            <a href="mailto:edcastr@microsoft.com">edcastr@microsoft.com</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="project-info">
+      <strong>VoiceProject</strong> — Built with Flask, ElevenLabs &amp; OpenAI<br />
+      Voice recording, cloning, transcription, sentiment analysis &amp; AI psychology chat.
+    </div>
+  </div>
+</body>
+</html>

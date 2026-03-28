@@ -12,6 +12,7 @@
    - [Análisis de Sentimientos (`/sentiment`)](#44-análisis-de-sentimientos-sentiment)
    - [Chat de Psicología (`/chat`)](#45-chat-de-psicología-chat)
    - [Chat de Voz (`/voice-chat`)](#46-chat-de-voz-voice-chat)
+   - [Acerca de (`/about`)](#47-acerca-de-about)
 5. [Referencia completa de la API](#5-referencia-completa-de-la-api)
    - [Módulo Grabadora](#51-módulo-grabadora)
    - [Módulo STT](#52-módulo-stt)
@@ -19,6 +20,7 @@
    - [Módulo Análisis de Sentimientos](#54-módulo-análisis-de-sentimientos)
    - [Módulo Chat de Psicología](#55-módulo-chat-de-psicología)
    - [Módulo Chat de Voz](#56-módulo-chat-de-voz)
+   - [Módulo Acerca de](#57-módulo-acerca-de)
 6. [Códigos de error comunes](#6-códigos-de-error-comunes)
 
 ---
@@ -121,6 +123,7 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 5. Escuchar la previsualización en el reproductor que aparece.
 6. Si la grabación es satisfactoria, hacer clic en **Save to server**. Si no, hacer clic en **Discard** y volver al paso 2.
 7. Las grabaciones guardadas aparecen en la lista inferior con un reproductor individual por archivo.
+8. Para eliminar una grabación existente, hacer clic en el botón **🗑 Delete** junto a la grabación y confirmar en el diálogo emergente.
 
 **Notas importantes:**
 - Se recomienda guardar **varias grabaciones** (3 o más) de frases diferentes para obtener una mejor clonación de voz.
@@ -240,6 +243,26 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 
 ---
 
+### 4.7 Acerca de (`/about`)
+
+**Propósito:** Muestra información sobre el proyecto y sus contribuyentes, incluyendo nombre, rol y correo electrónico de cada miembro del equipo.
+
+**Cómo usar:**
+
+1. Abrir `http://localhost:5000/about` o hacer clic en el enlace **ℹ️ About** disponible en la barra de navegación de cualquier página.
+2. Se muestra una tarjeta por cada contribuyente con su nombre, rol y dirección de correo electrónico (enlazada para enviar un email directamente).
+
+**Contribuyentes actuales:**
+
+| Nombre | Rol | Contacto |
+|--------|-----|----------|
+| Javier Gonzalez | CEO | javier@chelenko.com |
+| Julio Gomez | Senior FullStack Software Engineer | gomezjulio909@gmail.com |
+| Francisco Maldonado | FullStack Software Engineer | francisco.maldonado.campos@gmail.com |
+| Eduardo Castro Puello | AI Architect | ing.eduardo.castro@gmail.com · edcastr@microsoft.com |
+
+---
+
 ## 5. Referencia completa de la API
 
 Todas las rutas retornan JSON en caso de error. En las respuestas exitosas, el formato varía según el endpoint (JSON, archivo de audio, etc.).
@@ -310,6 +333,32 @@ Descarga o sirve un archivo de audio específico.
   | Código | Motivo |
   |--------|--------|
   | `400`  | Extensión de archivo no permitida. |
+  | `404`  | El archivo no existe. |
+
+---
+
+#### `DELETE /recordings/<filename>`
+
+Elimina un archivo de grabación específico del servidor.
+
+- **Parámetros de ruta:**
+
+  | Parámetro  | Descripción |
+  |------------|-------------|
+  | `filename` | Nombre del archivo de grabación a eliminar. |
+
+- **Respuesta exitosa (`200 OK`):**
+
+  ```json
+  {
+    "deleted": "3f8a1b2c9d4e5f6a7b8c9d0e.webm"
+  }
+  ```
+
+- **Respuestas de error:**
+
+  | Código | Motivo |
+  |--------|--------|
   | `404`  | El archivo no existe. |
 
 ---
@@ -617,6 +666,16 @@ Transcribe el audio del usuario a texto con detección automática de idioma (no
   |--------|--------|
   | `400`  | No se proporcionó ningún archivo de audio. |
   | `500`  | `ELEVENLABS_API_KEY` no configurada, o fallo en la transcripción. |
+
+---
+
+### 5.7 Módulo Acerca de
+
+#### `GET /about/`
+
+Renderiza la página «Acerca de» con la lista de contribuyentes del proyecto.
+
+- **Respuesta:** Página HTML.
 
 ---
 

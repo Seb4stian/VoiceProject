@@ -17,6 +17,7 @@ def create_app() -> Flask:
     from routes.sentiment import bp as sentiment_bp
     from routes.chat import bp as chat_bp
     from routes.voice_chat import bp as voice_chat_bp
+    from routes.about import bp as about_bp
 
     app.register_blueprint(recorder_bp)
     app.register_blueprint(stt_bp)
@@ -24,6 +25,7 @@ def create_app() -> Flask:
     app.register_blueprint(sentiment_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(voice_chat_bp)
+    app.register_blueprint(about_bp)
 
     return app
 

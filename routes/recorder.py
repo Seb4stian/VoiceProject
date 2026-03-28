@@ -48,3 +48,13 @@ def serve_recording(filename: str):
     if not os.path.isfile(os.path.join(RECORDINGS_DIR, safe)):
         return jsonify({"error": "File not found"}), 404
     return send_from_directory(RECORDINGS_DIR, safe)
+
+
+@bp.route("/recordings/<path:filename>", methods=["DELETE"])
+def delete_recording(filename: str):
+    safe = safe_filename(filename)
+    filepath = os.path.join(RECORDINGS_DIR, safe)
+    if not os.path.isfile(filepath):
+        return jsonify({"error": "File not found"}), 404
+    os.remove(filepath)
+    return jsonify({"deleted": safe}), 200
