@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Chat — Psychology</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; color: #2d3748; }
+    p.subtitle { color: #718096; margin-bottom: 1.5rem; text-align: center; max-width: 560px; }
+
+    nav { margin-bottom: 1.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
+    nav a { color: #3182ce; text-decoration: none; font-weight: 600; }
+    nav a:hover { text-decoration: underline; }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 620px;
+    }
+
+    /* ── Chat window ── */
+    #chatBox {
+      height: 380px;
+      overflow-y: auto;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+      background: #fafbfc;
+    }
+
+    .msg { max-width: 85%; padding: .6rem .9rem; border-radius: 12px; font-size: .95rem; line-height: 1.45; }
+    .msg.assistant { align-self: flex-start; background: #e2e8f0; color: #2d3748; border-bottom-left-radius: 3px; }
+    .msg.user      { align-self: flex-end;   background: #3182ce; color: #fff;    border-bottom-right-radius: 3px; }
+
+    .msg .speaker-icon { font-size: .75rem; opacity: .7; margin-left: .3rem; }
+
+    .sentiment-badge {
+      display: inline-block;
+      font-size: .72rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      margin-top: 4px;
+    }
+    .sentiment-badge.good    { background: #c6f6d5; color: #276749; }
+    .sentiment-badge.neutral { background: #fefcbf; color: #975a16; }
+    .sentiment-badge.bad     { background: #fed7d7; color: #9b2c2c; }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: .75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .7rem 1.4rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    #btnRecord { background: #e53e3e; color: #fff; flex: 1; justify-content: center; }
+    #btnStop   { background: #2d3748; color: #fff; flex: 1; justify-content: center; }
+    #btnEnd    { background: #805ad5; color: #fff; margin-top: .75rem; width: 100%; justify-content: center; }
+
+    #status {
+      text-align: center;
+      font-size: .85rem;
+      color: #718096;
+      margin-top: .6rem;
+      min-height: 1.1em;
+    }
+
+    /* ── Summary section ── */
+    #summarySection {
+      display: none;
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      border: 2px solid #805ad5;
+      border-radius: 10px;
+      background: #faf5ff;
+    }
+    #summarySection h3 { color: #553c9a; font-size: 1.15rem; margin-bottom: .75rem; }
+    .summary-field { margin-bottom: .75rem; }
+    .summary-field strong { color: #553c9a; }
+    .summary-field ul { margin-left: 1.2rem; margin-top: .25rem; }
+    .summary-field li { margin-bottom: .2rem; }
+
+    .overall-score {
+      display: inline-block;
+      font-size: 1.3rem;
+      font-weight: 700;
+      padding: .3rem .8rem;
+      border-radius: 8px;
+      margin-bottom: .5rem;
+    }
+    .overall-score.good    { background: #c6f6d5; color: #276749; }
+    .overall-score.neutral { background: #fefcbf; color: #975a16; }
+    .overall-score.bad     { background: #fed7d7; color: #9b2c2c; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid currentColor; border-top-color: transparent;
+      border-radius: 50%; animation: spin .6s linear infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(229,62,62,.4); }
+      50%       { box-shadow: 0 0 0 10px rgba(229,62,62,0); }
+    }
+    #btnRecord.recording { animation: pulse 1.2s infinite; }
+
+    .typing-indicator {
+      align-self: flex-start;
+      color: #a0aec0;
+      font-style: italic;
+      font-size: .85rem;
+      padding: .4rem .8rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠🎙 Voice Chat</h1>
+  <p class="subtitle">Speak with the AI psychologist using your voice. It responds aloud in your cloned voice.</p>
+  <nav>
+    <a href="/">🎙 Recorder</a>
+    <a href="/tts">🔊 TTS</a>
+    <a href="/stt">🎤 STT</a>
+    <a href="/sentiment">📊 Sentiment</a>
+    <a href="/chat">🧠 Text Chat</a>
+  </nav>
+
+  <div class="card">
+    <div id="chatBox"></div>
+
+    <div class="controls">
+      <button id="btnRecord" disabled>&#9679; Hold to Speak</button>
+      <button id="btnStop" disabled>&#9632; Stop</button>
+    </div>
+
+    <button id="btnEnd">End Chat &amp; Get Summary</button>
+    <div id="status">Starting conversation…</div>
+  </div>
+
+  <div class="card" id="summarySection">
+    <h3>📋 Psychological Assessment</h3>
+    <div id="summaryContent"></div>
+  </div>
+
+  <script>
+    const chatBox   = document.getElementById('chatBox');
+    const btnRecord = document.getElementById('btnRecord');
+    const btnStop   = document.getElementById('btnStop');
+    const btnEnd    = document.getElementById('btnEnd');
+    const statusEl  = document.getElementById('status');
+    const summarySection = document.getElementById('summarySection');
+    const summaryContent = document.getElementById('summaryContent');
+
+    let history = [];
+    let chatEnded = false;
+    let mediaRecorder = null;
+    let chunks = [];
+    let isProcessing = false;
+
+    function setStatus(msg, type) {
+      statusEl.innerHTML = msg;
+      statusEl.style.color = type === 'error' ? '#e53e3e' : '#718096';
+    }
+
+    function addMessage(role, text, sentiment) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + role;
+      div.textContent = text;
+      if (role === 'assistant') {
+        const icon = document.createElement('span');
+        icon.className = 'speaker-icon';
+        icon.textContent = ' 🔊';
+        div.appendChild(icon);
+      }
+      if (sentiment && role === 'user') {
+        const badge = document.createElement('div');
+        badge.className = 'sentiment-badge ' + sentiment.label.toLowerCase();
+        badge.textContent = `${sentiment.label} (${sentiment.score.toFixed(2)})`;
+        div.appendChild(badge);
+      }
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return div;
+    }
+
+    function showTyping(msg) {
+      const el = document.createElement('div');
+      el.className = 'typing-indicator';
+      el.id = 'typing';
+      el.textContent = msg || 'Processing…';
+      chatBox.appendChild(el);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function hideTyping() {
+      const el = document.getElementById('typing');
+      if (el) el.remove();
+    }
+
+    // ── Play TTS audio for a text ──
+    async function speakText(text) {
+      setStatus('🔊 Speaking…');
+      try {
+        const res = await fetch('/voice-chat/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error('TTS error:', err.error);
+          setStatus('⚠️ Voice playback failed, text shown above.', 'error');
+          return;
+        }
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        await new Promise((resolve) => {
+          const audio = new Audio(url);
+          audio.onended = resolve;
+          audio.onerror = () => {
+            console.error('Audio playback error');
+            resolve();
+          };
+          audio.play().catch(() => {
+            // Browser blocked autoplay — skip audio silently
+            console.warn('Autoplay blocked by browser');
+            resolve();
+          });
+        });
+      } catch (err) {
+        console.error('TTS playback error:', err);
+      }
+    }
+
+    // ── Start conversation (needs user click for autoplay policy) ──
+    async function startChat() {
+      // Show a "Start" button so the first TTS can play (browser autoplay policy)
+      btnRecord.textContent = '▶ Start Conversation';
+      btnRecord.disabled = false;
+      setStatus('Click the button to begin.');
+
+      await new Promise(resolve => {
+        btnRecord.addEventListener('click', resolve, { once: true });
+      });
+
+      btnRecord.disabled = true;
+      btnRecord.innerHTML = '&#9679; Hold to Speak';
+      showTyping('Psychologist is preparing…');
+
+      try {
+        const res = await fetch('/chat/start', { method: 'POST' });
+        const data = await res.json();
+        hideTyping();
+        if (res.ok) {
+          history.push({ role: 'assistant', content: data.reply });
+          addMessage('assistant', data.reply);
+          await speakText(data.reply);
+          setStatus('Press Record to respond with your voice.');
+          btnRecord.disabled = false;
+        } else {
+          setStatus('⚠️ ' + (data.error || 'Failed to start'), 'error');
+        }
+      } catch (err) {
+        hideTyping();
+        setStatus('⚠️ Network error: ' + err.message, 'error');
+      }
+    }
+
+    // ── Record user audio ──
+    btnRecord.addEventListener('click', async () => {
+      if (chatEnded || isProcessing) return;
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus('⚠️ Browser does not support audio recording.', 'error');
+        return;
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        setStatus('⚠️ Microphone access denied: ' + err.message, 'error');
+        return;
+      }
+
+      chunks = [];
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(
+        m => MediaRecorder.isTypeSupported(m)
+      ) || '';
+
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        await processRecording();
+      };
+
+      mediaRecorder.start();
+      btnRecord.classList.add('recording');
+      btnRecord.disabled = true;
+      btnStop.disabled = false;
+      setStatus('🔴 Recording… Click Stop when finished.');
+    });
+
+    btnStop.addEventListener('click', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      btnRecord.classList.remove('recording');
+      btnStop.disabled = true;
+    });
+
+    // ── Process recorded audio ──
+    async function processRecording() {
+      isProcessing = true;
+      btnRecord.disabled = true;
+      btnEnd.disabled = true;
+
+      const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      const ext  = (mediaRecorder.mimeType || 'audio/webm').split('/')[1].split(';')[0] || 'webm';
+
+      // Step 1: Transcribe
+      setStatus('<span class="spinner"></span> Transcribing your voice…');
+      const form = new FormData();
+      form.append('audio', blob, `recording.${ext}`);
+
+      let userText;
+      try {
+        const sttRes = await fetch('/voice-chat/transcribe', { method: 'POST', body: form });
+        const sttData = await sttRes.json();
+        if (!sttRes.ok) {
+          setStatus('⚠️ ' + (sttData.error || 'Transcription failed'), 'error');
+          isProcessing = false;
+          btnRecord.disabled = false;
+          btnEnd.disabled = false;
+          return;
+        }
+        userText = sttData.text.trim();
+        if (!userText) {
+          setStatus('⚠️ Could not hear anything. Try again.', 'error');
+          isProcessing = false;
+          btnRecord.disabled = false;
+          btnEnd.disabled = false;
+          return;
+        }
+      } catch (err) {
+        setStatus('⚠️ Network error: ' + err.message, 'error');
+        isProcessing = false;
+        btnRecord.disabled = false;
+        btnEnd.disabled = false;
+        return;
+      }
+
+      // Show user message
+      const userBubble = addMessage('user', userText);
+
+      // Step 2: Get AI reply + sentiment
+      showTyping('Psychologist is thinking…');
+      try {
+        const chatRes = await fetch('/chat/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userText, history }),
+        });
+        const chatData = await chatRes.json();
+        hideTyping();
+
+        if (!chatRes.ok) {
+          setStatus('⚠️ ' + (chatData.error || 'Chat failed'), 'error');
+          isProcessing = false;
+          btnRecord.disabled = false;
+          btnEnd.disabled = false;
+          return;
+        }
+
+        // Add sentiment badge to user bubble
+        if (chatData.sentiment) {
+          const badge = document.createElement('div');
+          badge.className = 'sentiment-badge ' + chatData.sentiment.label.toLowerCase();
+          badge.textContent = `${chatData.sentiment.label} (${chatData.sentiment.score.toFixed(2)})`;
+          userBubble.appendChild(badge);
+        }
+
+        history.push({ role: 'user', content: userText });
+        history.push({ role: 'assistant', content: chatData.reply });
+        addMessage('assistant', chatData.reply);
+
+        // Step 3: Speak the reply
+        await speakText(chatData.reply);
+
+        setStatus('Press Record to continue the conversation.');
+      } catch (err) {
+        hideTyping();
+        setStatus('⚠️ Network error: ' + err.message, 'error');
+      }
+
+      isProcessing = false;
+      btnRecord.disabled = false;
+      btnEnd.disabled = false;
+    }
+
+    // ── End chat & summary ──
+    btnEnd.addEventListener('click', async () => {
+      if (history.length < 2) {
+        setStatus('⚠️ Have a conversation first.', 'error');
+        return;
+      }
+
+      chatEnded = true;
+      btnRecord.disabled = true;
+      btnStop.disabled = true;
+      btnEnd.disabled = true;
+      setStatus('<span class="spinner"></span> Generating psychological assessment…');
+
+      try {
+        const res = await fetch('/chat/summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ history }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          renderSummary(data);
+          setStatus('✅ Assessment complete. Chat ended.');
+        } else {
+          setStatus('⚠️ ' + (data.error || 'Summary failed'), 'error');
+          chatEnded = false;
+          btnRecord.disabled = false;
+          btnEnd.disabled = false;
+        }
+      } catch (err) {
+        setStatus('⚠️ Network error: ' + err.message, 'error');
+        chatEnded = false;
+        btnRecord.disabled = false;
+        btnEnd.disabled = false;
+      }
+    });
+
+    function renderSummary(s) {
+      const overallLabel = s.overall_sentiment > 0.25 ? 'good' : s.overall_sentiment < -0.25 ? 'bad' : 'neutral';
+      const emoji = { good: '😊', neutral: '😐', bad: '😞' }[overallLabel];
+      summaryContent.innerHTML = `
+        <div class="summary-field">
+          <strong>Overall Sentiment:</strong>
+          <span class="overall-score ${overallLabel}">${emoji} ${s.overall_sentiment.toFixed(2)}</span>
+        </div>
+        <div class="summary-field"><strong>Emotional State:</strong> ${s.emotional_state}</div>
+        <div class="summary-field"><strong>Key Concerns:</strong>
+          <ul>${(s.key_concerns || []).map(c => `<li>${c}</li>`).join('')}</ul></div>
+        <div class="summary-field"><strong>Positive Signs:</strong>
+          <ul>${(s.positive_signs || []).map(p => `<li>${p}</li>`).join('')}</ul></div>
+        <div class="summary-field"><strong>Mental State Assessment:</strong><br>${s.mental_state_assessment}</div>
+        <div class="summary-field"><strong>Recommendations:</strong>
+          <ul>${(s.recommendations || []).map(r => `<li>${r}</li>`).join('')}</ul></div>
+        <div class="summary-field"><strong>Summary:</strong><br>${s.summary}</div>
+      `;
+      summarySection.style.display = 'block';
+      summarySection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Auto-start
+    startChat();
+  </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+Analyze the sentiment of the user's message in the context of this psychology conversation. Respond with ONLY a JSON object, nothing else:
+{"score": <float>}
+
+Rules:
+- "score" is a float from -1.0 to 1.0
+- -1.0 = very negative (deep sadness, despair, anger)
+- 0.0 = neutral
+- 1.0 = very positive (joy, gratitude, hope)
+- Consider emotional nuance: someone saying "I'm fine" in a context of loneliness may not be truly positive.
+
+User message:

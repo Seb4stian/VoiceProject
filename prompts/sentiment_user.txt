@@ -1,0 +1,11 @@
+Analyze the sentiment of the following text. Respond with ONLY a JSON object in this exact format, nothing else:
+{"score": <float>, "label": "<string>"}
+
+Rules:
+- "score" is a float from -1.0 to 1.0 where -1.0 is most negative, 0.0 is neutral, and 1.0 is most positive.
+- "label" is one of: "Good", "Neutral", or "Bad".
+  - score > 0.25  → "Good"
+  - score >= -0.25 and score <= 0.25 → "Neutral"
+  - score < -0.25 → "Bad"
+
+Text to analyze:
