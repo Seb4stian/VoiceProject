@@ -258,7 +258,7 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 |--------|-----|----------|
 | Javier Gonzalez | CEO | javier@chelenko.com |
 | Julio Gomez | Senior FullStack Software Engineer | gomezjulio909@gmail.com |
-| Francisco Maldonado | FullStack Software Engineer | francisco.maldonado.campos@gmail.com |
+| Francisco Maldonado | Senior FullStack Software Engineer | francisco.maldonado.campos@gmail.com |
 | Eduardo Castro Puello | AI Architect | ing.eduardo.castro@gmail.com · edcastr@microsoft.com |
 
 ---
