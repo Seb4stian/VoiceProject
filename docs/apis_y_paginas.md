@@ -138,14 +138,14 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 **Cómo usar:**
 
 1. Abrir `http://localhost:5000/tts`.
-2. Seleccionar el idioma de pronunciación en el menú desplegable (Inglés, Alemán o Japonés).
+2. Seleccionar el idioma de pronunciación en el menú desplegable (Inglés, Español, Alemán, Francés, Italiano, Portugués, Japonés, Chino o Coreano).
 3. Escribir el texto que se desea escuchar en el área de texto.
 4. Hacer clic en **Read Aloud**.
 5. El servidor genera el audio con la voz clonada y lo reproduce automáticamente en el reproductor que aparece.
 
 **Notas:**
 - La primera vez que se usa el TTS después de iniciar el servidor, el sistema clona la voz a partir de todas las grabaciones disponibles. Las llamadas siguientes reutilizan la voz clonada mientras el conjunto de grabaciones no cambie.
-- Los idiomas soportados para la síntesis son: Inglés (`en`), Alemán (`de`) y Japonés (`ja`).
+- Los idiomas soportados para la síntesis son: Inglés (`en`), Español (`es`), Alemán (`de`), Francés (`fr`), Italiano (`it`), Portugués (`pt`), Japonés (`ja`), Chino (`zh`) y Coreano (`ko`).
 
 ---
 
@@ -156,7 +156,7 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 **Cómo usar:**
 
 1. Abrir `http://localhost:5000/stt`.
-2. Seleccionar el idioma hablado en el menú desplegable (Inglés, Alemán o Japonés).
+2. Seleccionar el idioma hablado en el menú desplegable (Inglés, Español, Alemán, Francés, Italiano, Portugués, Japonés, Chino o Coreano).
 3. Hacer clic en **Record** y hablar claramente.
 4. Hacer clic en **Stop** al terminar.
 5. La transcripción aparece automáticamente en el área de texto inferior.
@@ -334,7 +334,7 @@ Transcribe un archivo de audio a texto usando el modelo `scribe_v1` de ElevenLab
   | Campo      | Tipo    | Obligatorio | Descripción |
   |------------|---------|-------------|-------------|
   | `audio`    | archivo | Sí          | Archivo de audio a transcribir. |
-  | `language` | string  | No          | Código de idioma (por ejemplo, `"en"`, `"de"`, `"ja"`). Por defecto `"en"`. |
+  | `language` | string  | No          | Código de idioma. Valores válidos: `"en"`, `"es"`, `"de"`, `"fr"`, `"it"`, `"pt"`, `"ja"`, `"zh"`, `"ko"`. Por defecto `"en"`. |
 
 - **Respuesta exitosa (`200 OK`):**
 
@@ -373,7 +373,7 @@ Convierte texto a audio usando la voz clonada del usuario y el modelo `eleven_mu
   | Campo      | Tipo   | Obligatorio | Descripción |
   |------------|--------|-------------|-------------|
   | `text`     | string | Sí          | Texto a sintetizar. |
-  | `language` | string | No          | Código de idioma. Valores válidos: `"en"`, `"de"`, `"ja"`. Por defecto `"en"`. |
+  | `language` | string | No          | Código de idioma. Valores válidos: `"en"`, `"es"`, `"de"`, `"fr"`, `"it"`, `"pt"`, `"ja"`, `"zh"`, `"ko"`. Por defecto `"en"`. |
 
   Ejemplo:
   ```json
