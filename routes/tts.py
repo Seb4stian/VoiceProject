@@ -6,6 +6,7 @@ import os
 from elevenlabs import ElevenLabs
 from flask import Blueprint, jsonify, render_template, request, send_file
 
+from shared import LANGUAGE_NAMES
 from voice import get_or_create_voice
 
 bp = Blueprint("tts", __name__, url_prefix="/tts")
@@ -36,7 +37,7 @@ def speak():
     except Exception as exc:
         return jsonify({"error": f"Voice cloning failed: {exc}"}), 500
 
-    SUPPORTED_LANGUAGES = {"en", "de", "ja"}
+    SUPPORTED_LANGUAGES = set(LANGUAGE_NAMES.keys())
     language = data.get("language", "en")
     if language not in SUPPORTED_LANGUAGES:
         language = "en"
