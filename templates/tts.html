@@ -9,7 +9,15 @@
 <body>
   <h1>🔊 Text to Speech</h1>
   <p class="subtitle">Type text and hear it read aloud in your cloned voice</p>
-  <nav><a href="/">← Recorder</a> &nbsp;|&nbsp; <a href="/stt">🎤 STT</a> &nbsp;|&nbsp; <a href="/sentiment">📊 Sentiment</a> &nbsp;|&nbsp; <a href="/chat">🧠 Chat</a> &nbsp;|&nbsp; <a href="/about">ℹ️ About</a></nav>
+  <nav>
+    <a href="/">← Recorder</a> &nbsp;|&nbsp;
+    <a href="/stt">🎤 STT</a> &nbsp;|&nbsp;
+    <a href="/sentiment">📊 Sentiment</a> &nbsp;|&nbsp;
+    <a href="/chat">🧠 Chat</a> &nbsp;|&nbsp;
+    <a href="/voice-chat">🎙🧠 Voice Chat</a> &nbsp;|&nbsp;
+    <a href="/about">ℹ️ About</a>
+    {% if current_user %}&nbsp;|&nbsp; <a href="/auth/logout">🚪 Logout ({{ current_user }})</a>{% endif %}
+  </nav>
 
   <div class="card">
     <label for="langSelect">Language:</label>

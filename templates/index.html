@@ -9,7 +9,15 @@
 <body>
   <h1>🎙 Voice Recorder</h1>
   <p class="subtitle">Record, save and replay your voice directly in the browser</p>
-  <nav><a href="/tts">🔊 TTS</a> <a href="/stt">🎤 STT</a> <a href="/sentiment">📊 Sentiment</a> <a href="/chat">🧠 Chat</a> <a href="/voice-chat">🎙🧠 Voice Chat</a> <a href="/about">ℹ️ About</a></nav>
+  <nav>
+    <a href="/tts">🔊 TTS</a>
+    <a href="/stt">🎤 STT</a>
+    <a href="/sentiment">📊 Sentiment</a>
+    <a href="/chat">🧠 Chat</a>
+    <a href="/voice-chat">🎙🧠 Voice Chat</a>
+    <a href="/about">ℹ️ About</a>
+    {% if current_user %}<a href="/auth/logout">🚪 Logout ({{ current_user }})</a>{% endif %}
+  </nav>
 
   <div class="card">
     <!-- Controls -->
@@ -75,7 +83,6 @@
       const li     = document.createElement('li');
       const name   = document.createElement('div');
       const audio  = document.createElement('audio');
-      const btnDel = document.createElement('button');
 
       name.className   = 'rec-name';
       name.textContent = filename;
@@ -84,35 +91,9 @@
       audio.controls   = true;
       audio.src        = `/recordings/${encodeURIComponent(filename)}`;
 
-      btnDel.className   = 'btn-delete';
-      btnDel.textContent = '🗑 Delete';
-      btnDel.addEventListener('click', () => deleteRecording(filename, li));
-
-      li.prepend(btnDel);
       li.prepend(audio);
       li.prepend(name);
       list.prepend(li);   // newest first
-    }
-
-    // ── Delete ───────────────────────────────────────────────────────────────
-    async function deleteRecording(filename, liElement) {
-      if (!confirm(`Delete "${filename}"?`)) return;
-
-      try {
-        const res = await fetch(`/recordings/${encodeURIComponent(filename)}`, { method: 'DELETE' });
-        if (res.ok) {
-          liElement.remove();
-          setStatus(`🗑 Deleted <strong>${filename}</strong>`);
-          if (!list.querySelector('li:not(#noRecordings)')) {
-            list.innerHTML = '<li id="noRecordings">No recordings yet.</li>';
-          }
-        } else {
-          const data = await res.json().catch(() => ({}));
-          setStatus('⚠️ Delete failed: ' + (data.error || res.statusText), 'error');
-        }
-      } catch (err) {
-        setStatus('⚠️ Network error: ' + err.message, 'error');
-      }
     }
 
     // ── Record ───────────────────────────────────────────────────────────────

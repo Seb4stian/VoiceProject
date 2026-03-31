@@ -32,6 +32,7 @@ SENTIMENT_USER_PROMPT = load_prompt("sentiment_user.txt")
 CHAT_PSYCHOLOGIST_SYSTEM = load_prompt("chat_psychologist_system.txt")
 CHAT_SENTIMENT_PROMPT = load_prompt("chat_sentiment.txt")
 CHAT_SUMMARY_PROMPT = load_prompt("chat_summary.txt")
+CHAT_TAKEAWAY_PROMPT = load_prompt("chat_takeaway.txt")
 
 # ── Language map ──────────────────────────────────────────────────────────────
 
@@ -56,6 +57,13 @@ def get_default_language_name() -> str:
 # ── Recording helpers ─────────────────────────────────────────────────────────
 
 
+def get_user_recordings_dir(user_id: int) -> str:
+    """Return the recordings directory for a specific user, creating it if needed."""
+    user_dir = os.path.join(RECORDINGS_DIR, str(user_id))
+    os.makedirs(user_dir, exist_ok=True)
+    return user_dir
+
+
 def safe_filename(name: str) -> str:
     """Return only the basename so directory traversal is not possible."""
     return os.path.basename(name)
@@ -65,11 +73,14 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def get_recording_files() -> list[str]:
+def get_recording_files(user_id: int | None = None) -> list[str]:
     """Return absolute paths of usable recordings (newest first)."""
+    rec_dir = get_user_recordings_dir(user_id) if user_id else RECORDINGS_DIR
+    if not os.path.isdir(rec_dir):
+        return []
     files = [
-        os.path.join(RECORDINGS_DIR, f)
-        for f in os.listdir(RECORDINGS_DIR)
+        os.path.join(rec_dir, f)
+        for f in os.listdir(rec_dir)
         if not f.startswith(".") and allowed_file(f)
     ]
     files.sort(key=os.path.getmtime, reverse=True)

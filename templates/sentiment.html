@@ -14,7 +14,9 @@
     <a href="/tts">🔊 TTS</a>
     <a href="/stt">🎤 STT</a>
     <a href="/chat">🧠 Chat</a>
+    <a href="/voice-chat">🎙🧠 Voice Chat</a>
     <a href="/about">ℹ️ About</a>
+    {% if current_user %}<a href="/auth/logout">🚪 Logout ({{ current_user }})</a>{% endif %}
   </nav>
 
   <div class="card">

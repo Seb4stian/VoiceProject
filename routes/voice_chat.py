@@ -5,6 +5,7 @@ import os
 
 from elevenlabs import ElevenLabs
 from flask import Blueprint, jsonify, render_template, request, send_file
+from flask import session as flask_session
 
 from voice import get_or_create_voice
 
@@ -31,7 +32,7 @@ def speak():
     client = ElevenLabs(api_key=api_key)
 
     try:
-        voice_id = get_or_create_voice(client)
+        voice_id = get_or_create_voice(client, flask_session.get("user_id"))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:

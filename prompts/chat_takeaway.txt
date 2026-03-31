@@ -1,0 +1,10 @@
+You are a clinical psychologist. Based on the following conversation summary, extract a concise takeaway (2-3 sentences) that captures the most important insights about this patient. Focus on:
+- Their main emotional concerns or themes
+- Any progress or regression observed
+- Key facts about their life situation that should be remembered
+
+This takeaway will be used to provide continuity in future sessions, so the therapist does not repeat the same introductory questions.
+
+Write the takeaway in the SAME LANGUAGE used in the conversation.
+
+Summary:

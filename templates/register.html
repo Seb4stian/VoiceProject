@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register — VoiceProject</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+</head>
+<body>
+  <h1>📝 Register</h1>
+  <p class="subtitle">Create a new VoiceProject account</p>
+
+  <div class="card">
+    {% if error %}
+      <div class="alert error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('auth.register') }}">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" placeholder="Choose a username" required autofocus />
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" placeholder="your@email.com" required />
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" placeholder="At least 6 characters" required />
+
+      <label for="confirm">Confirm Password</label>
+      <input type="password" id="confirm" name="confirm" placeholder="Re-enter your password" required />
+
+      <button type="submit">Create Account</button>
+    </form>
+
+    <p class="switch-link">Already have an account? <a href="{{ url_for('auth.login') }}">Login here</a></p>
+  </div>
+</body>
+</html>

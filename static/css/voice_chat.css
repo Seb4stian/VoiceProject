@@ -141,3 +141,35 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   font-size: .85rem;
   padding: .4rem .8rem;
 }
+
+/* ── Sentiment Timeline ── */
+#timelineSection {
+  display: block;
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 2px solid #805ad5;
+  border-radius: 10px;
+  background: #faf5ff;
+}
+#timelineSection h3 {
+  color: #553c9a;
+  font-size: 1.15rem;
+  margin-bottom: .25rem;
+}
+.timeline-subtitle {
+  color: #718096;
+  font-size: .85rem;
+  margin-bottom: 1rem;
+}
+.chart-container {
+  position: relative;
+  height: 260px;
+  width: 100%;
+}
+.timeline-empty {
+  display: none;
+  text-align: center;
+  color: #a0aec0;
+  font-size: .9rem;
+  padding: 1.5rem 0;
+}

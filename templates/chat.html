@@ -14,7 +14,9 @@
     <a href="/tts">🔊 TTS</a>
     <a href="/stt">🎤 STT</a>
     <a href="/sentiment">📊 Sentiment</a>
+    <a href="/voice-chat">🎙🧠 Voice Chat</a>
     <a href="/about">ℹ️ About</a>
+    {% if current_user %}<a href="/auth/logout">🚪 Logout ({{ current_user }})</a>{% endif %}
   </nav>
 
   <div class="card">
@@ -34,6 +36,18 @@
     <div id="summaryContent"></div>
   </div>
 
+  <div class="card" id="timelineSection">
+    <h3>📈 Sentiment Timeline</h3>
+    <p class="timeline-subtitle">Overall sentiment from your previous conversations</p>
+    <div class="chart-container">
+      <canvas id="timelineChart"></canvas>
+    </div>
+    <div id="timelineEmpty" class="timeline-empty">No previous sessions yet.</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
   <script>
     const chatBox   = document.getElementById('chatBox');
     const msgInput  = document.getElementById('msgInput');
@@ -46,6 +60,7 @@
     // Conversation history: [{role, content}]
     let history = [];
     let chatEnded = false;
+    let chatSessionId = null;
 
     function setStatus(msg, type) {
       statusEl.innerHTML = msg;
@@ -93,6 +108,7 @@
         hideTyping();
         if (res.ok) {
           history.push({ role: 'assistant', content: data.reply });
+          chatSessionId = data.session_id;
           addMessage('assistant', data.reply);
         } else {
           setStatus('⚠️ ' + (data.error || 'Failed to start'), 'error');
@@ -119,7 +135,7 @@
         const res = await fetch('/chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, history }),
+          body: JSON.stringify({ message: text, history, session_id: chatSessionId }),
         });
         const data = await res.json();
         hideTyping();
@@ -167,7 +183,7 @@
         const res = await fetch('/chat/summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ history }),
+          body: JSON.stringify({ history, session_id: chatSessionId }),
         });
         const data = await res.json();
 
@@ -224,6 +240,7 @@
       summaryContent.innerHTML = html;
       summarySection.style.display = 'block';
       summarySection.scrollIntoView({ behavior: 'smooth' });
+      loadTimeline();
     }
 
     // ── Event listeners ──
@@ -236,8 +253,95 @@
       }
     });
 
+    // ── Sentiment Timeline ──
+    let timelineChart = null;
+
+    async function loadTimeline() {
+      try {
+        const res = await fetch('/chat/history');
+        const data = await res.json();
+        const section = document.getElementById('timelineSection');
+        const empty = document.getElementById('timelineEmpty');
+        const canvas = document.getElementById('timelineChart');
+
+        if (!data.length) {
+          empty.style.display = 'block';
+          canvas.style.display = 'none';
+          section.style.display = 'block';
+          return;
+        }
+
+        empty.style.display = 'none';
+        canvas.style.display = 'block';
+        section.style.display = 'block';
+
+        const labels = data.map(d => d.date);
+        const scores = data.map(d => d.sentiment_score);
+        const colors = scores.map(s => s > 0.25 ? '#38a169' : s < -0.25 ? '#e53e3e' : '#d69e2e');
+
+        if (timelineChart) timelineChart.destroy();
+
+        timelineChart = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Sentiment Score',
+              data: scores,
+              borderColor: '#805ad5',
+              backgroundColor: 'rgba(128,90,213,0.1)',
+              pointBackgroundColor: colors,
+              pointBorderColor: colors,
+              pointRadius: 7,
+              pointHoverRadius: 10,
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                type: 'time',
+                time: { unit: 'day', tooltipFormat: 'PPp' },
+                title: { display: true, text: 'Date', color: '#718096' },
+                ticks: { color: '#718096' },
+                grid: { color: 'rgba(0,0,0,0.05)' },
+              },
+              y: {
+                min: -1, max: 1,
+                title: { display: true, text: 'Sentiment', color: '#718096' },
+                ticks: {
+                  color: '#718096',
+                  callback: v => v === 1 ? '😊 +1' : v === 0 ? '😐  0' : v === -1 ? '😞 -1' : v.toFixed(1),
+                },
+                grid: { color: 'rgba(0,0,0,0.05)' },
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: ctx => {
+                    const s = ctx.parsed.y;
+                    const lbl = s > 0.25 ? 'Good' : s < -0.25 ? 'Bad' : 'Neutral';
+                    return `${lbl} (${s.toFixed(2)})`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Failed to load timeline:', err);
+      }
+    }
+
     // Start automatically
     startChat();
+    loadTimeline();
   </script>
 </body>
 </html>

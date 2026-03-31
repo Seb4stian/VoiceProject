@@ -6,9 +6,8 @@ from elevenlabs import ElevenLabs
 
 from shared import get_recording_files
 
-# Cache so we only clone once per server lifetime
-_cloned_voice_id: str | None = None
-_cloned_files_hash: str | None = None
+# Per-user cache: {user_id: (voice_id, files_hash)}
+_voice_cache: dict[int, tuple[str, str]] = {}
 
 
 def _recordings_hash(files: list[str]) -> str:
@@ -16,22 +15,24 @@ def _recordings_hash(files: list[str]) -> str:
     return "|".join(parts)
 
 
-def get_or_create_voice(client: ElevenLabs) -> str:
-    """Return a cloned voice_id, creating one if needed."""
-    global _cloned_voice_id, _cloned_files_hash
-
-    rec_files = get_recording_files()
+def get_or_create_voice(client: ElevenLabs, user_id: int | None = None) -> str:
+    """Return a cloned voice_id, creating one if needed. Cached per user."""
+    rec_files = get_recording_files(user_id)
     if not rec_files:
         raise ValueError("No recordings found. Record your voice first!")
 
     current_hash = _recordings_hash(rec_files)
-    if _cloned_voice_id and _cloned_files_hash == current_hash:
-        return _cloned_voice_id
+    cache_key = user_id or 0
+
+    if cache_key in _voice_cache:
+        cached_id, cached_hash = _voice_cache[cache_key]
+        if cached_hash == current_hash:
+            return cached_id
 
     file_handles = [open(f, "rb") for f in rec_files]
     try:
         voice = client.voices.ivc.create(
-            name="My Cloned Voice",
+            name=f"Cloned Voice (user {user_id})",
             description="Voice cloned from local recordings",
             files=file_handles,
         )
@@ -39,6 +40,5 @@ def get_or_create_voice(client: ElevenLabs) -> str:
         for fh in file_handles:
             fh.close()
 
-    _cloned_voice_id = voice.voice_id
-    _cloned_files_hash = current_hash
-    return _cloned_voice_id
+    _voice_cache[cache_key] = (voice.voice_id, current_hash)
+    return voice.voice_id

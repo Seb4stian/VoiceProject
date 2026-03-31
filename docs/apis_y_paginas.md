@@ -6,21 +6,23 @@
 2. [Variables de entorno](#2-variables-de-entorno)
 3. [Cómo ejecutar el servidor](#3-cómo-ejecutar-el-servidor)
 4. [Páginas de la aplicación](#4-páginas-de-la-aplicación)
-   - [Grabadora de Voz (`/`)](#41-grabadora-de-voz-)
-   - [Texto a Voz — TTS (`/tts`)](#42-texto-a-voz--tts-tts)
-   - [Voz a Texto — STT (`/stt`)](#43-voz-a-texto--stt-stt)
-   - [Análisis de Sentimientos (`/sentiment`)](#44-análisis-de-sentimientos-sentiment)
-   - [Chat de Psicología (`/chat`)](#45-chat-de-psicología-chat)
-   - [Chat de Voz (`/voice-chat`)](#46-chat-de-voz-voice-chat)
-   - [Acerca de (`/about`)](#47-acerca-de-about)
+   - [Autenticación (`/auth`)](#41-autenticación-auth)
+   - [Grabadora de Voz (`/`)](#42-grabadora-de-voz-)
+   - [Texto a Voz — TTS (`/tts`)](#43-texto-a-voz--tts-tts)
+   - [Voz a Texto — STT (`/stt`)](#44-voz-a-texto--stt-stt)
+   - [Análisis de Sentimientos (`/sentiment`)](#45-análisis-de-sentimientos-sentiment)
+   - [Chat de Psicología (`/chat`)](#46-chat-de-psicología-chat)
+   - [Chat de Voz (`/voice-chat`)](#47-chat-de-voz-voice-chat)
+   - [Acerca de (`/about`)](#48-acerca-de-about)
 5. [Referencia completa de la API](#5-referencia-completa-de-la-api)
-   - [Módulo Grabadora](#51-módulo-grabadora)
-   - [Módulo STT](#52-módulo-stt)
-   - [Módulo TTS](#53-módulo-tts)
-   - [Módulo Análisis de Sentimientos](#54-módulo-análisis-de-sentimientos)
-   - [Módulo Chat de Psicología](#55-módulo-chat-de-psicología)
-   - [Módulo Chat de Voz](#56-módulo-chat-de-voz)
-   - [Módulo Acerca de](#57-módulo-acerca-de)
+   - [Módulo Autenticación](#51-módulo-autenticación)
+   - [Módulo Grabadora](#52-módulo-grabadora)
+   - [Módulo STT](#53-módulo-stt)
+   - [Módulo TTS](#54-módulo-tts)
+   - [Módulo Análisis de Sentimientos](#55-módulo-análisis-de-sentimientos)
+   - [Módulo Chat de Psicología](#56-módulo-chat-de-psicología)
+   - [Módulo Chat de Voz](#57-módulo-chat-de-voz)
+   - [Módulo Acerca de](#58-módulo-acerca-de)
 6. [Códigos de error comunes](#6-códigos-de-error-comunes)
 
 ---
@@ -34,12 +36,16 @@
 | elevenlabs SDK | 1.0.0    |
 | openai SDK     | 1.0.0    |
 | python-dotenv  | 1.0.0    |
+| psycopg2-binary | 2.9.0   |
+| PostgreSQL      | 14       |
 
-Para instalar todas las dependencias:
+Para instalar todas las dependencias Python:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+Para instalar PostgreSQL, consultar la sección de [configuración de la base de datos en `arquitectura.md`](arquitectura.md#6-base-de-datos--postgresql).
 
 ---
 
@@ -51,6 +57,8 @@ La aplicación requiere las siguientes variables de entorno. Se pueden definir e
 |-----------------------|-------------|-------------|
 | `OPENAI_API_KEY`      | Sí          | Clave de API de OpenAI. Se usa para el chat de psicología y el análisis de sentimientos. |
 | `ELEVENLABS_API_KEY`  | Sí          | Clave de API de ElevenLabs. Se usa para la síntesis de voz (TTS) y el reconocimiento de voz (STT). |
+| `DB_PASSWORD`         | Sí          | Contraseña del usuario PostgreSQL para la base de datos `VoiceProject`. |
+| `SECRET_KEY`          | No          | Clave secreta de Flask para firmar las sesiones de usuario. Si no se define, se usa un valor por defecto de desarrollo. |
 | `FLASK_DEBUG`         | No          | Si se establece en `1`, Flask corre en modo de depuración con recarga automática. Por defecto es `0`. |
 
 Ejemplo de archivo `.env`:
@@ -58,6 +66,7 @@ Ejemplo de archivo `.env`:
 ```env
 OPENAI_API_KEY=sk-...
 ELEVENLABS_API_KEY=sk_...
+DB_PASSWORD=12345aB.
 FLASK_DEBUG=0
 ```
 
@@ -92,12 +101,18 @@ gunicorn "app:create_app()" --bind 0.0.0.0:5000
 
 ### Configuración adicional (`config.json`)
 
-El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetros:
+El archivo `config.json` en la raíz del proyecto permite ajustar los siguientes parámetros:
 
 ```json
 {
   "openai_model": "gpt-4o-mini",
-  "default_language": "es"
+  "default_language": "es",
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "name": "VoiceProject",
+    "user": "edcastr"
+  }
 }
 ```
 
@@ -105,12 +120,47 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 |--------------------|-------------|-----------------|
 | `openai_model`     | Modelo de OpenAI utilizado para el chat y el análisis de sentimientos. | Cualquier identificador de modelo de OpenAI, por ejemplo `gpt-4o`, `gpt-4o-mini`. |
 | `default_language` | Idioma predeterminado para el saludo inicial del psicólogo y el resumen de la sesión. | `"es"` (español), `"en"` (inglés), `"de"` (alemán), `"fr"` (francés), `"ja"` (japonés), `"pt"` (portugués), `"it"` (italiano), `"zh"` (chino), `"ko"` (coreano). |
+| `database.host`    | Host del servidor PostgreSQL. | Por defecto `"localhost"`. |
+| `database.port`    | Puerto del servidor PostgreSQL. | Por defecto `5432`. |
+| `database.name`    | Nombre de la base de datos. | Por defecto `"VoiceProject"`. |
+| `database.user`    | Usuario de PostgreSQL. | Por defecto `"edcastr"`. |
+
+> **Nota:** La contraseña de la base de datos se lee de la variable de entorno `DB_PASSWORD` (archivo `.env`), no del `config.json`.
 
 ---
 
 ## 4. Páginas de la aplicación
 
-### 4.1 Grabadora de Voz (`/`)
+### 4.1 Autenticación (`/auth`)
+
+**Propósito:** Gestiona el acceso de usuarios mediante registro, inicio de sesión y cierre de sesión. Todas las demás páginas requieren autenticación — un usuario no autenticado es redirigido automáticamente a `/auth/login`.
+
+#### Inicio de sesión (`/auth/login`)
+
+1. Abrir `http://localhost:5000/auth/login` (o acceder a cualquier página sin estar autenticado).
+2. Introducir el nombre de usuario y la contraseña.
+3. Hacer clic en **Sign In**.
+4. Si las credenciales son correctas, se redirige a la página principal (`/`).
+
+#### Registro (`/auth/register`)
+
+1. Hacer clic en el enlace **Register here** en la página de inicio de sesión.
+2. Completar el formulario: nombre de usuario, correo electrónico, contraseña (mínimo 6 caracteres) y confirmación de contraseña.
+3. Hacer clic en **Create Account**.
+4. Si el registro es exitoso, se redirige a la página de inicio de sesión con un mensaje de confirmación.
+
+**Validaciones:**
+- El nombre de usuario solo puede contener letras, números y guiones bajos.
+- El nombre de usuario y el correo electrónico deben ser únicos.
+- La contraseña requiere al menos 6 caracteres.
+
+#### Cierre de sesión
+
+- Hacer clic en **🚪 Logout** en la barra de navegación de cualquier página.
+
+---
+
+### 4.2 Grabadora de Voz (`/`)
 
 **Propósito:** Permite al usuario grabar su voz directamente desde el navegador y guardar las grabaciones en el servidor. Estas grabaciones son la fuente de datos para la clonación de voz utilizada por los módulos TTS.
 
@@ -127,12 +177,12 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 
 **Notas importantes:**
 - Se recomienda guardar **varias grabaciones** (3 o más) de frases diferentes para obtener una mejor clonación de voz.
-- Las grabaciones se almacenan en la carpeta `recordings/` del servidor con nombres únicos generados automáticamente.
+- Las grabaciones se almacenan en una carpeta individual por usuario (`recordings/<user_id>/`) con nombres únicos generados automáticamente.
 - Formatos de audio admitidos: `webm`, `ogg`, `wav`, `mp4`.
 
 ---
 
-### 4.2 Texto a Voz — TTS (`/tts`)
+### 4.3 Texto a Voz — TTS (`/tts`)
 
 **Propósito:** Convierte texto escrito en audio hablado utilizando una voz clonada del propio usuario (construida a partir de las grabaciones guardadas).
 
@@ -152,7 +202,7 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 
 ---
 
-### 4.3 Voz a Texto — STT (`/stt`)
+### 4.4 Voz a Texto — STT (`/stt`)
 
 **Propósito:** Transcribe audio grabado en tiempo real a texto escrito utilizando el modelo de reconocimiento de voz de ElevenLabs (`scribe_v1`).
 
@@ -166,7 +216,7 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 
 ---
 
-### 4.4 Análisis de Sentimientos (`/sentiment`)
+### 4.5 Análisis de Sentimientos (`/sentiment`)
 
 **Propósito:** Analiza el tono emocional de un texto y devuelve una puntuación numérica y una etiqueta cualitativa (Bueno, Neutral, Malo) usando la API de OpenAI.
 
@@ -190,9 +240,9 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 
 ---
 
-### 4.5 Chat de Psicología (`/chat`)
+### 4.6 Chat de Psicología (`/chat`)
 
-**Propósito:** Proporciona una sesión de conversación textual con un psicólogo de IA especializado en el bienestar emocional de adultos mayores. Al finalizar la sesión genera un informe psicológico detallado.
+**Propósito:** Proporciona una sesión de conversación textual con un psicólogo de IA especializado en el bienestar emocional de adultos mayores. Al finalizar la sesión genera un informe psicológico detallado. Todas las conversaciones se guardan automáticamente en la base de datos PostgreSQL.
 
 **Cómo usar:**
 
@@ -201,6 +251,7 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 3. Escribir mensajes en el campo de texto inferior y presionar **Send** o la tecla **Enter**.
 4. Cada mensaje del usuario muestra una insignia de sentimiento (Good/Neutral/Bad) con su puntuación.
 5. Al finalizar la conversación, hacer clic en **End Chat & Get Summary** para obtener el informe psicológico.
+6. Debajo del informe se muestra la **gráfica de línea temporal de sentimientos** (timeline) con el sentimiento general de todas las sesiones anteriores del usuario.
 
 **Informe psicológico incluye:**
 - Sentimiento general de la sesión (puntuación y etiqueta).
@@ -211,15 +262,26 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 - Recomendaciones del psicólogo.
 - Resumen narrativo de la sesión.
 
+**Persistencia y continuidad:**
+- Cada sesión de chat se almacena en la base de datos con todos sus mensajes, sentimientos y resumen.
+- Al inicio de una nueva sesión, el sistema carga automáticamente los **takeaways** (puntos clave) de sesiones anteriores y los inyecta en el contexto del psicólogo.
+- Esto permite que el psicólogo **continúe la relación terapéutica de forma natural**, sin repetir preguntas introductorias ya respondidas en sesiones previas.
+
+**Gráfica de sentimientos (Timeline):**
+- Se muestra al cargar la página y se actualiza al finalizar cada sesión.
+- Eje X: fecha de cada sesión anterior.
+- Eje Y: puntuación de sentimiento general (de -1.0 a +1.0).
+- Los puntos se colorean según el sentimiento: 🟢 Bueno (> +0.25), 🟡 Neutro, 🔴 Malo (< -0.25).
+
 **Notas:**
 - El psicólogo responde siempre en el mismo idioma que usa el usuario.
 - Se requiere al menos un intercambio de mensajes para poder generar el resumen.
 
 ---
 
-### 4.6 Chat de Voz (`/voice-chat`)
+### 4.7 Chat de Voz (`/voice-chat`)
 
-**Propósito:** Versión de voz del chat de psicología. El usuario habla con el micrófono y escucha las respuestas del psicólogo con la voz clonada del propio usuario.
+**Propósito:** Versión de voz del chat de psicología. El usuario habla con el micrófono y escucha las respuestas del psicólogo con la voz clonada del propio usuario. Al igual que el chat de texto, las conversaciones se persisten y se muestran en la gráfica de sentimientos.
 
 **Requisito previo:** Haber guardado al menos una grabación en la página Grabadora de Voz.
 
@@ -243,7 +305,7 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 
 ---
 
-### 4.7 Acerca de (`/about`)
+### 4.8 Acerca de (`/about`)
 
 **Propósito:** Muestra información sobre el proyecto y sus contribuyentes, incluyendo nombre, rol y correo electrónico de cada miembro del equipo.
 
@@ -267,7 +329,71 @@ El archivo `config.json` en la raíz del proyecto permite ajustar dos parámetro
 
 Todas las rutas retornan JSON en caso de error. En las respuestas exitosas, el formato varía según el endpoint (JSON, archivo de audio, etc.).
 
-### 5.1 Módulo Grabadora
+> **Nota:** Todos los endpoints excepto los de autenticación (`/auth/*`) y archivos estáticos (`/static/*`) requieren una sesión de usuario activa. Las peticiones no autenticadas reciben un `302 Redirect` a `/auth/login`.
+
+### 5.1 Módulo Autenticación
+
+#### `GET /auth/login`
+
+Renderiza la página de inicio de sesión.
+
+- **Respuesta:** Página HTML.
+
+---
+
+#### `POST /auth/login`
+
+Autentica al usuario y crea una sesión.
+
+- **Tipo de contenido:** `application/x-www-form-urlencoded`
+- **Campos del formulario:**
+
+  | Campo      | Tipo   | Obligatorio | Descripción |
+  |------------|--------|-------------|-------------|
+  | `username` | string | Sí          | Nombre de usuario. |
+  | `password` | string | Sí          | Contraseña. |
+
+- **Respuesta exitosa:** `302 Redirect` a `/`.
+- **Respuesta de error:** Renderiza de nuevo la página de login con mensaje de error.
+
+---
+
+#### `GET /auth/register`
+
+Renderiza la página de registro.
+
+- **Respuesta:** Página HTML.
+
+---
+
+#### `POST /auth/register`
+
+Crea una nueva cuenta de usuario.
+
+- **Tipo de contenido:** `application/x-www-form-urlencoded`
+- **Campos del formulario:**
+
+  | Campo      | Tipo   | Obligatorio | Descripción |
+  |------------|--------|-------------|-------------|
+  | `username` | string | Sí          | Nombre de usuario (solo letras, números y `_`). |
+  | `email`    | string | Sí          | Correo electrónico (debe ser único). |
+  | `password` | string | Sí          | Contraseña (mínimo 6 caracteres). |
+  | `confirm`  | string | Sí          | Confirmación de la contraseña (debe coincidir). |
+
+- **Respuesta exitosa:** `302 Redirect` a `/auth/login?registered=1`.
+- **Respuesta de error:** Renderiza de nuevo la página de registro con mensaje de error.
+
+---
+
+#### `GET /auth/logout`
+
+Cierra la sesión del usuario actual.
+
+- **Respuesta:** `302 Redirect` a `/auth/login`.
+
+---
+
+### 5.2 Módulo Grabadora
 
 #### `GET /`
 
@@ -363,7 +489,7 @@ Elimina un archivo de grabación específico del servidor.
 
 ---
 
-### 5.2 Módulo STT
+### 5.3 Módulo STT
 
 #### `GET /stt/`
 
@@ -402,7 +528,7 @@ Transcribe un archivo de audio a texto usando el modelo `scribe_v1` de ElevenLab
 
 ---
 
-### 5.3 Módulo TTS
+### 5.4 Módulo TTS
 
 #### `GET /tts/`
 
@@ -443,7 +569,7 @@ Convierte texto a audio usando la voz clonada del usuario y el modelo `eleven_mu
 
 ---
 
-### 5.4 Módulo Análisis de Sentimientos
+### 5.5 Módulo Análisis de Sentimientos
 
 #### `GET /sentiment/`
 
@@ -494,7 +620,7 @@ Analiza el sentimiento de un texto usando el modelo de OpenAI configurado.
 
 ---
 
-### 5.5 Módulo Chat de Psicología
+### 5.6 Módulo Chat de Psicología
 
 #### `GET /chat/`
 
@@ -506,16 +632,22 @@ Renderiza la página del chat de psicología.
 
 #### `POST /chat/start`
 
-Solicita al psicólogo de IA que inicie la conversación con un saludo en el idioma configurado en `config.json`.
+Solicita al psicólogo de IA que inicie la conversación con un saludo en el idioma configurado en `config.json`. Crea una nueva sesión de chat en la base de datos y carga los takeaways de sesiones anteriores para dar continuidad.
 
 - **Tipo de contenido:** No requiere cuerpo.
 - **Respuesta exitosa (`200 OK`):**
 
   ```json
   {
-    "reply": "¡Buenos días! Me alegra que esté aquí. ¿Cómo se siente hoy?"
+    "reply": "¡Buenos días! Me alegra que esté aquí. ¿Cómo se siente hoy?",
+    "session_id": 42
   }
   ```
+
+  | Campo        | Tipo    | Descripción |
+  |--------------|---------|-------------|
+  | `reply`      | string  | Saludo del psicólogo. |
+  | `session_id` | integer | ID de la sesión de chat creada en la base de datos. Debe enviarse en las peticiones subsiguientes. |
 
 - **Respuestas de error:**
 
@@ -532,10 +664,11 @@ Envía un mensaje del usuario al psicólogo de IA y recibe la respuesta junto co
 - **Tipo de contenido:** `application/json`
 - **Cuerpo de la petición:**
 
-  | Campo     | Tipo   | Obligatorio | Descripción |
-  |-----------|--------|-------------|-------------|
-  | `message` | string | Sí          | Mensaje del usuario. |
-  | `history` | array  | No          | Historial de la conversación. Lista de objetos `{"role": "user"/"assistant", "content": "..."}`. |
+  | Campo        | Tipo    | Obligatorio | Descripción |
+  |--------------|---------|-------------|-------------|
+  | `message`    | string  | Sí          | Mensaje del usuario. |
+  | `history`    | array   | No          | Historial de la conversación. Lista de objetos `{"role": "user"/"assistant", "content": "..."}`. |
+  | `session_id` | integer | No          | ID de la sesión de chat (devuelto por `/chat/start`). Si se proporciona, los mensajes se guardan en la base de datos. |
 
   Ejemplo:
   ```json
@@ -543,7 +676,8 @@ Envía un mensaje del usuario al psicólogo de IA y recibe la respuesta junto co
     "message": "Me siento un poco solo hoy.",
     "history": [
       { "role": "assistant", "content": "¡Buenos días! ¿Cómo se siente hoy?" }
-    ]
+    ],
+    "session_id": 42
   }
   ```
 
@@ -570,14 +704,15 @@ Envía un mensaje del usuario al psicólogo de IA y recibe la respuesta junto co
 
 #### `POST /chat/summary`
 
-Genera un informe psicológico completo a partir del historial de la conversación.
+Genera un informe psicológico completo a partir del historial de la conversación. Si se proporciona `session_id`, también genera un **takeaway** (resumen condensado para continuidad) y lo guarda junto con el informe en la base de datos.
 
 - **Tipo de contenido:** `application/json`
 - **Cuerpo de la petición:**
 
-  | Campo     | Tipo  | Obligatorio | Descripción |
-  |-----------|-------|-------------|-------------|
-  | `history` | array | Sí          | Historial completo de la conversación. Lista de objetos `{"role": "...", "content": "..."}`. |
+  | Campo        | Tipo    | Obligatorio | Descripción |
+  |--------------|---------|-------------|-------------|
+  | `history`    | array   | Sí          | Historial completo de la conversación. Lista de objetos `{"role": "...", "content": "..."}`. |
+  | `session_id` | integer | No          | ID de la sesión de chat. Si se proporciona, se persiste el resumen y el takeaway en la base de datos. |
 
 - **Respuesta exitosa (`200 OK`):**
 
@@ -602,7 +737,38 @@ Genera un informe psicológico completo a partir del historial de la conversaci�
 
 ---
 
-### 5.6 Módulo Chat de Voz
+#### `GET /chat/history`
+
+Devuelve la línea temporal de sentimientos de todas las sesiones completadas del usuario autenticado. Se usa para generar la gráfica de sentimientos en el frontend.
+
+- **Respuesta exitosa (`200 OK`):**
+
+  ```json
+  [
+    {
+      "session_id": 1,
+      "date": "2026-03-28T14:30:00",
+      "sentiment_score": -0.15
+    },
+    {
+      "session_id": 5,
+      "date": "2026-03-31T10:00:00",
+      "sentiment_score": 0.42
+    }
+  ]
+  ```
+
+  | Campo             | Tipo    | Descripción |
+  |-------------------|---------|-------------|
+  | `session_id`      | integer | ID de la sesión. |
+  | `date`            | string  | Fecha de inicio de la sesión en formato ISO 8601. |
+  | `sentiment_score` | float   | Sentimiento general de la sesión (-1.0 a +1.0), extraído del campo `overall_sentiment` del resumen. |
+
+- **Respuesta si no hay sesiones:** `[]` (lista vacía).
+
+---
+
+### 5.7 Módulo Chat de Voz
 
 #### `GET /voice-chat/`
 
@@ -669,7 +835,7 @@ Transcribe el audio del usuario a texto con detección automática de idioma (no
 
 ---
 
-### 5.7 Módulo Acerca de
+### 5.8 Módulo Acerca de
 
 #### `GET /about/`
 

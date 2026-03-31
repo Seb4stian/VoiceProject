@@ -1,11 +1,18 @@
-Analyze the sentiment of the user's message in the context of this psychology conversation. Respond with ONLY a JSON object, nothing else:
+Analyze the sentiment of the user's message in the context of a psychology conversation with an older adult (elderly person, typically 65+ years old) who may be living in a senior home or hospital.
+
+Respond with ONLY a JSON object, nothing else:
 {"score": <float>}
 
 Rules:
 - "score" is a float from -1.0 to 1.0
-- -1.0 = very negative (deep sadness, despair, anger)
+- -1.0 = very negative (deep sadness, despair, grief, anger)
 - 0.0 = neutral
-- 1.0 = very positive (joy, gratitude, hope)
-- Consider emotional nuance: someone saying "I'm fine" in a context of loneliness may not be truly positive.
+- 1.0 = very positive (joy, gratitude, hope, fond memories)
+- Be sensitive to emotional patterns common in elderly adults:
+  - Phrases like "I'm fine" or "no complaints" may mask underlying loneliness — lean slightly negative if context suggests isolation.
+  - Nostalgia or talking about the past can carry mixed emotions; distinguish between warm memories (positive) and longing/loss (negative).
+  - Resignation ("that's just how it is", "what can you do") often signals suppressed sadness — score as mildly negative.
+  - Mentions of family visits, feeling useful, or being remembered should score positively.
+  - Physical complaints paired with emotional language should factor in the emotional tone, not just the complaint.
 
 User message:

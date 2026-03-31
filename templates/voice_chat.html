@@ -16,6 +16,7 @@
     <a href="/sentiment">📊 Sentiment</a>
     <a href="/chat">🧠 Text Chat</a>
     <a href="/about">ℹ️ About</a>
+    {% if current_user %}<a href="/auth/logout">🚪 Logout ({{ current_user }})</a>{% endif %}
   </nav>
 
   <div class="card">
@@ -35,6 +36,18 @@
     <div id="summaryContent"></div>
   </div>
 
+  <div class="card" id="timelineSection">
+    <h3>📈 Sentiment Timeline</h3>
+    <p class="timeline-subtitle">Overall sentiment from your previous conversations</p>
+    <div class="chart-container">
+      <canvas id="timelineChart"></canvas>
+    </div>
+    <div id="timelineEmpty" class="timeline-empty">No previous sessions yet.</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
   <script>
     const chatBox   = document.getElementById('chatBox');
     const btnRecord = document.getElementById('btnRecord');
@@ -49,6 +62,7 @@
     let mediaRecorder = null;
     let chunks = [];
     let isProcessing = false;
+    let chatSessionId = null;
 
     function setStatus(msg, type) {
       statusEl.innerHTML = msg;
@@ -90,9 +104,9 @@
       if (el) el.remove();
     }
 
-    // ── Play TTS audio for a text ──
-    async function speakText(text) {
-      setStatus('🔊 Speaking…');
+    // ── Fetch TTS audio, show text when ready, then play ──
+    async function speakText(text, onReady) {
+      setStatus('<span class="spinner"></span> Generating voice…');
       try {
         const res = await fetch('/voice-chat/speak', {
           method: 'POST',
@@ -102,11 +116,14 @@
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           console.error('TTS error:', err.error);
+          if (onReady) onReady();
           setStatus('⚠️ Voice playback failed, text shown above.', 'error');
           return;
         }
         const blob = await res.blob();
         const url  = URL.createObjectURL(blob);
+        if (onReady) onReady();
+        setStatus('🔊 Speaking…');
         await new Promise((resolve) => {
           const audio = new Audio(url);
           audio.onended = resolve;
@@ -115,13 +132,13 @@
             resolve();
           };
           audio.play().catch(() => {
-            // Browser blocked autoplay — skip audio silently
             console.warn('Autoplay blocked by browser');
             resolve();
           });
         });
       } catch (err) {
         console.error('TTS playback error:', err);
+        if (onReady) onReady();
       }
     }
 
@@ -146,8 +163,11 @@
         hideTyping();
         if (res.ok) {
           history.push({ role: 'assistant', content: data.reply });
-          addMessage('assistant', data.reply);
-          await speakText(data.reply);
+          chatSessionId = data.session_id;
+          await speakText(data.reply, () => {
+            hideTyping();
+            addMessage('assistant', data.reply);
+          });
           setStatus('Press Record to respond with your voice.');
           btnRecord.disabled = false;
         } else {
@@ -254,7 +274,7 @@
         const chatRes = await fetch('/chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: userText, history }),
+          body: JSON.stringify({ message: userText, history, session_id: chatSessionId }),
         });
         const chatData = await chatRes.json();
         hideTyping();
@@ -277,10 +297,13 @@
 
         history.push({ role: 'user', content: userText });
         history.push({ role: 'assistant', content: chatData.reply });
-        addMessage('assistant', chatData.reply);
+        showTyping('Preparing voice response…');
 
-        // Step 3: Speak the reply
-        await speakText(chatData.reply);
+        // Step 3: Speak the reply — show text only when audio is ready
+        await speakText(chatData.reply, () => {
+          hideTyping();
+          addMessage('assistant', chatData.reply);
+        });
 
         setStatus('Press Record to continue the conversation.');
       } catch (err) {
@@ -310,7 +333,7 @@
         const res = await fetch('/chat/summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ history }),
+          body: JSON.stringify({ history, session_id: chatSessionId }),
         });
         const data = await res.json();
 
@@ -351,10 +374,98 @@
       `;
       summarySection.style.display = 'block';
       summarySection.scrollIntoView({ behavior: 'smooth' });
+      loadTimeline();
+    }
+
+    // ── Sentiment Timeline ──
+    let timelineChart = null;
+
+    async function loadTimeline() {
+      try {
+        const res = await fetch('/chat/history');
+        const data = await res.json();
+        const section = document.getElementById('timelineSection');
+        const empty = document.getElementById('timelineEmpty');
+        const canvas = document.getElementById('timelineChart');
+
+        if (!data.length) {
+          empty.style.display = 'block';
+          canvas.style.display = 'none';
+          section.style.display = 'block';
+          return;
+        }
+
+        empty.style.display = 'none';
+        canvas.style.display = 'block';
+        section.style.display = 'block';
+
+        const labels = data.map(d => d.date);
+        const scores = data.map(d => d.sentiment_score);
+        const colors = scores.map(s => s > 0.25 ? '#38a169' : s < -0.25 ? '#e53e3e' : '#d69e2e');
+
+        if (timelineChart) timelineChart.destroy();
+
+        timelineChart = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Sentiment Score',
+              data: scores,
+              borderColor: '#805ad5',
+              backgroundColor: 'rgba(128,90,213,0.1)',
+              pointBackgroundColor: colors,
+              pointBorderColor: colors,
+              pointRadius: 7,
+              pointHoverRadius: 10,
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                type: 'time',
+                time: { unit: 'day', tooltipFormat: 'PPp' },
+                title: { display: true, text: 'Date', color: '#718096' },
+                ticks: { color: '#718096' },
+                grid: { color: 'rgba(0,0,0,0.05)' },
+              },
+              y: {
+                min: -1, max: 1,
+                title: { display: true, text: 'Sentiment', color: '#718096' },
+                ticks: {
+                  color: '#718096',
+                  callback: v => v === 1 ? '😊 +1' : v === 0 ? '😐  0' : v === -1 ? '😞 -1' : v.toFixed(1),
+                },
+                grid: { color: 'rgba(0,0,0,0.05)' },
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: ctx => {
+                    const s = ctx.parsed.y;
+                    const lbl = s > 0.25 ? 'Good' : s < -0.25 ? 'Bad' : 'Neutral';
+                    return `${lbl} (${s.toFixed(2)})`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Failed to load timeline:', err);
+      }
     }
 
     // Auto-start
     startChat();
+    loadTimeline();
   </script>
 </body>
 </html>

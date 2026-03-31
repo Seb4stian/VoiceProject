@@ -21,10 +21,10 @@ ENV/
 *.swp
 
 # Recordings — keep the folder itself (.gitkeep) but ignore audio files
-recordings/*.webm
-recordings/*.ogg
-recordings/*.wav
-recordings/*.mp4
+recordings/**/*.webm
+recordings/**/*.ogg
+recordings/**/*.wav
+recordings/**/*.mp4
 
 # Flask instance / debug
 instance/
