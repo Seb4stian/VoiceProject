@@ -22,13 +22,15 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
 );
 
 CREATE TABLE IF NOT EXISTS chat_messages (
-    id              SERIAL      PRIMARY KEY,
-    session_id      INTEGER     NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
-    role            VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
-    content         TEXT        NOT NULL,
-    sentiment_score REAL,
-    sentiment_label VARCHAR(20),
-    created_at      TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
+    id               SERIAL      PRIMARY KEY,
+    session_id       INTEGER     NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+    role             VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
+    content          TEXT        NOT NULL,
+    sentiment_score  REAL,
+    sentiment_label  VARCHAR(20),
+    voice_tone       VARCHAR(30),
+    voice_tone_score REAL,
+    created_at       TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id   ON chat_sessions(user_id);

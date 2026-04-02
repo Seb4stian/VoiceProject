@@ -33,6 +33,7 @@ CHAT_PSYCHOLOGIST_SYSTEM = load_prompt("chat_psychologist_system.txt")
 CHAT_SENTIMENT_PROMPT = load_prompt("chat_sentiment.txt")
 CHAT_SUMMARY_PROMPT = load_prompt("chat_summary.txt")
 CHAT_TAKEAWAY_PROMPT = load_prompt("chat_takeaway.txt")
+VOICE_TONE_PROMPT = load_prompt("voice_tone.txt")
 
 # ── Language map ──────────────────────────────────────────────────────────────
 
@@ -96,3 +97,22 @@ def compute_sentiment_label(score: float) -> str:
     elif score < -0.25:
         return "Bad"
     return "Neutral"
+
+
+# ── Voice tone scoring helper ─────────────────────────────────────────────────
+
+VOICE_TONE_SCORES = {
+    "happy": 0.8,
+    "calm": 0.4,
+    "surprised": 0.2,
+    "neutral": 0.0,
+    "anxious": -0.3,
+    "sad": -0.6,
+    "angry": -0.8,
+    "fearful": -0.9,
+}
+
+
+def voice_tone_to_score(tone: str) -> float:
+    """Map a voice tone label to a numerical score in the range [-1, 1]."""
+    return VOICE_TONE_SCORES.get(tone.lower(), 0.0)

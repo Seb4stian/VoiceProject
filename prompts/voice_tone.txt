@@ -1,0 +1,18 @@
+You are an expert in emotional analysis. Analyze the following message from a therapy patient and classify the dominant emotional tone.
+
+Respond with ONLY a JSON object in this exact format:
+{"tone": "<emotion>", "confidence": <float from 0.0 to 1.0>}
+
+The "tone" must be exactly one of these values:
+- "happy" (joyful, cheerful, grateful, excited)
+- "sad" (sorrowful, grieving, melancholic, hopeless)
+- "angry" (frustrated, irritated, hostile, resentful)
+- "anxious" (worried, nervous, fearful, panicked)
+- "calm" (relaxed, peaceful, content, serene)
+- "neutral" (flat, matter-of-fact, no strong emotion)
+- "fearful" (scared, terrified, dread, phobic)
+- "surprised" (shocked, amazed, bewildered, astonished)
+
+Consider the words chosen, phrasing style, and emotional undertones. In a therapy context, pay attention to subtle emotional cues.
+
+Patient message:

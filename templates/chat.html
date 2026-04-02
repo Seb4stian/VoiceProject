@@ -37,8 +37,8 @@
   </div>
 
   <div class="card" id="timelineSection">
-    <h3>📈 Sentiment Timeline</h3>
-    <p class="timeline-subtitle">Overall sentiment from your previous conversations</p>
+    <h3>📈 Session Timeline</h3>
+    <p class="timeline-subtitle">Sentiment &amp; voice tone from your previous conversations</p>
     <div class="chart-container">
       <canvas id="timelineChart"></canvas>
     </div>
@@ -218,6 +218,14 @@
         <div class="summary-field">
           <strong>Emotional State:</strong> ${s.emotional_state}
         </div>
+      `;
+      if (s.voice_tone_summary) {
+        html += `
+        <div class="summary-field">
+          <strong>🎭 Voice Tone Analysis:</strong> ${s.voice_tone_summary}
+        </div>`;
+      }
+      html += `
         <div class="summary-field">
           <strong>Key Concerns:</strong>
           <ul>${(s.key_concerns || []).map(c => `<li>${c}</li>`).join('')}</ul>
@@ -279,26 +287,46 @@
         const scores = data.map(d => d.sentiment_score);
         const colors = scores.map(s => s > 0.25 ? '#38a169' : s < -0.25 ? '#e53e3e' : '#d69e2e');
 
+        const hasVoiceTone = data.some(d => d.voice_tone_score !== null && d.voice_tone_score !== undefined);
+        const toneScores = data.map(d => d.voice_tone_score);
+        const toneColors = toneScores.map(s => s === null ? '#ccc' : s > 0.2 ? '#38a169' : s < -0.2 ? '#e53e3e' : '#d69e2e');
+
         if (timelineChart) timelineChart.destroy();
+
+        const datasets = [{
+          label: 'Text Sentiment',
+          data: scores,
+          borderColor: '#805ad5',
+          backgroundColor: 'rgba(128,90,213,0.1)',
+          pointBackgroundColor: colors,
+          pointBorderColor: colors,
+          pointRadius: 7,
+          pointHoverRadius: 10,
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3,
+        }];
+
+        if (hasVoiceTone) {
+          datasets.push({
+            label: 'Voice Tone',
+            data: toneScores,
+            borderColor: '#3182ce',
+            backgroundColor: 'rgba(49,130,206,0.1)',
+            pointBackgroundColor: toneColors,
+            pointBorderColor: toneColors,
+            pointRadius: 6,
+            pointHoverRadius: 9,
+            borderWidth: 2,
+            borderDash: [6, 3],
+            fill: false,
+            tension: 0.3,
+          });
+        }
 
         timelineChart = new Chart(canvas, {
           type: 'line',
-          data: {
-            labels,
-            datasets: [{
-              label: 'Sentiment Score',
-              data: scores,
-              borderColor: '#805ad5',
-              backgroundColor: 'rgba(128,90,213,0.1)',
-              pointBackgroundColor: colors,
-              pointBorderColor: colors,
-              pointRadius: 7,
-              pointHoverRadius: 10,
-              borderWidth: 2,
-              fill: true,
-              tension: 0.3,
-            }]
-          },
+          data: { labels, datasets },
           options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -312,7 +340,7 @@
               },
               y: {
                 min: -1, max: 1,
-                title: { display: true, text: 'Sentiment', color: '#718096' },
+                title: { display: true, text: 'Score', color: '#718096' },
                 ticks: {
                   color: '#718096',
                   callback: v => v === 1 ? '😊 +1' : v === 0 ? '😐  0' : v === -1 ? '😞 -1' : v.toFixed(1),
@@ -321,13 +349,14 @@
               }
             },
             plugins: {
-              legend: { display: false },
+              legend: { display: hasVoiceTone, position: 'top' },
               tooltip: {
                 callbacks: {
                   label: ctx => {
                     const s = ctx.parsed.y;
+                    if (s === null) return 'No data';
                     const lbl = s > 0.25 ? 'Good' : s < -0.25 ? 'Bad' : 'Neutral';
-                    return `${lbl} (${s.toFixed(2)})`;
+                    return `${ctx.dataset.label}: ${lbl} (${s.toFixed(2)})`;
                   }
                 }
               }

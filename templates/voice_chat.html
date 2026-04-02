@@ -37,8 +37,8 @@
   </div>
 
   <div class="card" id="timelineSection">
-    <h3>📈 Sentiment Timeline</h3>
-    <p class="timeline-subtitle">Overall sentiment from your previous conversations</p>
+    <h3>📈 Session Timeline</h3>
+    <p class="timeline-subtitle">Sentiment &amp; voice tone from your previous conversations</p>
     <div class="chart-container">
       <canvas id="timelineChart"></canvas>
     </div>
@@ -69,7 +69,7 @@
       statusEl.style.color = type === 'error' ? '#e53e3e' : '#718096';
     }
 
-    function addMessage(role, text, sentiment) {
+    function addMessage(role, text, sentiment, voiceTone) {
       const div = document.createElement('div');
       div.className = 'msg ' + role;
       div.textContent = text;
@@ -84,6 +84,13 @@
         badge.className = 'sentiment-badge ' + sentiment.label.toLowerCase();
         badge.textContent = `${sentiment.label} (${sentiment.score.toFixed(2)})`;
         div.appendChild(badge);
+      }
+      if (voiceTone && role === 'user') {
+        const toneBadge = document.createElement('div');
+        toneBadge.className = 'voice-tone-badge tone-' + voiceTone.tone;
+        const toneEmoji = {happy:'😊',sad:'😢',angry:'😠',anxious:'😰',calm:'😌',neutral:'😐',fearful:'😨',surprised:'😲'}[voiceTone.tone] || '🎭';
+        toneBadge.textContent = `${toneEmoji} ${voiceTone.tone}`;
+        div.appendChild(toneBadge);
       }
       chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
@@ -239,6 +246,7 @@
       form.append('audio', blob, `recording.${ext}`);
 
       let userText;
+      let voiceToneData = null;
       try {
         const sttRes = await fetch('/voice-chat/transcribe', { method: 'POST', body: form });
         const sttData = await sttRes.json();
@@ -250,6 +258,9 @@
           return;
         }
         userText = sttData.text.trim();
+        if (sttData.voice_tone) {
+          voiceToneData = { tone: sttData.voice_tone, score: sttData.voice_tone_score };
+        }
         if (!userText) {
           setStatus('⚠️ Could not hear anything. Try again.', 'error');
           isProcessing = false;
@@ -265,16 +276,21 @@
         return;
       }
 
-      // Show user message
-      const userBubble = addMessage('user', userText);
+      // Show user message with tone badge
+      const userBubble = addMessage('user', userText, null, voiceToneData);
 
       // Step 2: Get AI reply + sentiment
       showTyping('Psychologist is thinking…');
       try {
+        const chatBody = { message: userText, history, session_id: chatSessionId };
+        if (voiceToneData) {
+          chatBody.voice_tone = voiceToneData.tone;
+          chatBody.voice_tone_score = voiceToneData.score;
+        }
         const chatRes = await fetch('/chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: userText, history, session_id: chatSessionId }),
+          body: JSON.stringify(chatBody),
         });
         const chatData = await chatRes.json();
         hideTyping();
@@ -295,7 +311,9 @@
           userBubble.appendChild(badge);
         }
 
-        history.push({ role: 'user', content: userText });
+        const userEntry = { role: 'user', content: userText };
+        if (voiceToneData) userEntry.voice_tone = voiceToneData.tone;
+        history.push(userEntry);
         history.push({ role: 'assistant', content: chatData.reply });
         showTyping('Preparing voice response…');
 
@@ -357,12 +375,17 @@
     function renderSummary(s) {
       const overallLabel = s.overall_sentiment > 0.25 ? 'good' : s.overall_sentiment < -0.25 ? 'bad' : 'neutral';
       const emoji = { good: '😊', neutral: '😐', bad: '😞' }[overallLabel];
-      summaryContent.innerHTML = `
+      let html = `
         <div class="summary-field">
           <strong>Overall Sentiment:</strong>
           <span class="overall-score ${overallLabel}">${emoji} ${s.overall_sentiment.toFixed(2)}</span>
         </div>
         <div class="summary-field"><strong>Emotional State:</strong> ${s.emotional_state}</div>
+      `;
+      if (s.voice_tone_summary) {
+        html += `<div class="summary-field"><strong>🎭 Voice Tone Analysis:</strong> ${s.voice_tone_summary}</div>`;
+      }
+      html += `
         <div class="summary-field"><strong>Key Concerns:</strong>
           <ul>${(s.key_concerns || []).map(c => `<li>${c}</li>`).join('')}</ul></div>
         <div class="summary-field"><strong>Positive Signs:</strong>
@@ -372,6 +395,7 @@
           <ul>${(s.recommendations || []).map(r => `<li>${r}</li>`).join('')}</ul></div>
         <div class="summary-field"><strong>Summary:</strong><br>${s.summary}</div>
       `;
+      summaryContent.innerHTML = html;
       summarySection.style.display = 'block';
       summarySection.scrollIntoView({ behavior: 'smooth' });
       loadTimeline();
@@ -403,26 +427,46 @@
         const scores = data.map(d => d.sentiment_score);
         const colors = scores.map(s => s > 0.25 ? '#38a169' : s < -0.25 ? '#e53e3e' : '#d69e2e');
 
+        const hasVoiceTone = data.some(d => d.voice_tone_score !== null && d.voice_tone_score !== undefined);
+        const toneScores = data.map(d => d.voice_tone_score);
+        const toneColors = toneScores.map(s => s === null ? '#ccc' : s > 0.2 ? '#38a169' : s < -0.2 ? '#e53e3e' : '#d69e2e');
+
         if (timelineChart) timelineChart.destroy();
+
+        const datasets = [{
+          label: 'Text Sentiment',
+          data: scores,
+          borderColor: '#805ad5',
+          backgroundColor: 'rgba(128,90,213,0.1)',
+          pointBackgroundColor: colors,
+          pointBorderColor: colors,
+          pointRadius: 7,
+          pointHoverRadius: 10,
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3,
+        }];
+
+        if (hasVoiceTone) {
+          datasets.push({
+            label: 'Voice Tone',
+            data: toneScores,
+            borderColor: '#3182ce',
+            backgroundColor: 'rgba(49,130,206,0.1)',
+            pointBackgroundColor: toneColors,
+            pointBorderColor: toneColors,
+            pointRadius: 6,
+            pointHoverRadius: 9,
+            borderWidth: 2,
+            borderDash: [6, 3],
+            fill: false,
+            tension: 0.3,
+          });
+        }
 
         timelineChart = new Chart(canvas, {
           type: 'line',
-          data: {
-            labels,
-            datasets: [{
-              label: 'Sentiment Score',
-              data: scores,
-              borderColor: '#805ad5',
-              backgroundColor: 'rgba(128,90,213,0.1)',
-              pointBackgroundColor: colors,
-              pointBorderColor: colors,
-              pointRadius: 7,
-              pointHoverRadius: 10,
-              borderWidth: 2,
-              fill: true,
-              tension: 0.3,
-            }]
-          },
+          data: { labels, datasets },
           options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -436,7 +480,7 @@
               },
               y: {
                 min: -1, max: 1,
-                title: { display: true, text: 'Sentiment', color: '#718096' },
+                title: { display: true, text: 'Score', color: '#718096' },
                 ticks: {
                   color: '#718096',
                   callback: v => v === 1 ? '😊 +1' : v === 0 ? '😐  0' : v === -1 ? '😞 -1' : v.toFixed(1),
@@ -445,13 +489,14 @@
               }
             },
             plugins: {
-              legend: { display: false },
+              legend: { display: hasVoiceTone, position: 'top' },
               tooltip: {
                 callbacks: {
                   label: ctx => {
                     const s = ctx.parsed.y;
+                    if (s === null) return 'No data';
                     const lbl = s > 0.25 ? 'Good' : s < -0.25 ? 'Bad' : 'Neutral';
-                    return `${lbl} (${s.toFixed(2)})`;
+                    return `${ctx.dataset.label}: ${lbl} (${s.toFixed(2)})`;
                   }
                 }
               }

@@ -59,6 +59,26 @@ nav a:hover { text-decoration: underline; }
 .sentiment-badge.neutral { background: #fefcbf; color: #975a16; }
 .sentiment-badge.bad     { background: #fed7d7; color: #9b2c2c; }
 
+.voice-tone-badge {
+  display: inline-block;
+  font-size: .72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-top: 3px;
+  margin-left: 4px;
+  background: #e9d8fd;
+  color: #553c9a;
+}
+.voice-tone-badge.tone-happy    { background: #c6f6d5; color: #276749; }
+.voice-tone-badge.tone-calm     { background: #bee3f8; color: #2a4365; }
+.voice-tone-badge.tone-neutral  { background: #e2e8f0; color: #4a5568; }
+.voice-tone-badge.tone-surprised { background: #fefcbf; color: #975a16; }
+.voice-tone-badge.tone-anxious  { background: #fed7d7; color: #9b2c2c; }
+.voice-tone-badge.tone-sad      { background: #c3dafe; color: #3c366b; }
+.voice-tone-badge.tone-angry    { background: #fed7d7; color: #9b2c2c; }
+.voice-tone-badge.tone-fearful  { background: #feebc8; color: #7b341e; }
+
 /* ── Controls ── */
 .controls {
   display: flex;

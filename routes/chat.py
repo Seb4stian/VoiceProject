@@ -93,6 +93,8 @@ def message():
     history = data.get("history", [])
     user_msg = (data.get("message") or "").strip()
     chat_session_id = data.get("session_id")
+    voice_tone = data.get("voice_tone")
+    voice_tone_score = data.get("voice_tone_score")
 
     if not user_msg:
         return jsonify({"error": "No message provided"}), 400
@@ -135,13 +137,22 @@ def message():
         label = compute_sentiment_label(score)
 
         if chat_session_id:
-            save_chat_message(chat_session_id, "user", user_msg, score, label)
+            save_chat_message(
+                chat_session_id, "user", user_msg, score, label,
+                voice_tone, voice_tone_score,
+            )
             save_chat_message(chat_session_id, "assistant", reply)
 
-        return jsonify({
+        result = {
             "reply": reply,
             "sentiment": {"score": round(score, 2), "label": label},
-        })
+        }
+        if voice_tone:
+            result["voice_tone"] = {
+                "tone": voice_tone,
+                "score": voice_tone_score,
+            }
+        return jsonify(result)
     except Exception as exc:
         return jsonify({"error": f"Chat failed: {exc}"}), 500
 
@@ -150,10 +161,10 @@ def message():
 def summary():
     """Generate a psychological summary in the configured default language."""
     data = request.get_json(silent=True) or {}
-    history = data.get("history", [])
+    history_data = data.get("history", [])
     chat_session_id = data.get("session_id")
 
-    if not history:
+    if not history_data:
         return jsonify({"error": "No conversation to summarize"}), 400
 
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -165,9 +176,12 @@ def summary():
     client = OpenAI(api_key=api_key)
 
     transcript = ""
-    for entry in history:
+    for entry in history_data:
         role_label = "Patient" if entry["role"] == "user" else "Psychologist"
-        transcript += f"{role_label}: {entry['content']}\n"
+        line = f"{role_label}: {entry['content']}"
+        if entry["role"] == "user" and entry.get("voice_tone"):
+            line += f" [Voice tone: {entry['voice_tone']}]"
+        transcript += line + "\n"
 
     try:
         response = client.chat.completions.create(
@@ -209,7 +223,7 @@ def summary():
 
 @bp.route("/history", methods=["GET"])
 def history():
-    """Return the sentiment timeline for all completed sessions of the current user."""
+    """Return the sentiment and voice tone timeline for all completed sessions."""
     user_id = flask_session.get("user_id")
     rows = get_session_timeline(user_id)
     timeline = [
@@ -217,6 +231,7 @@ def history():
             "session_id": r["id"],
             "date": r["started_at"].isoformat() if r["started_at"] else None,
             "sentiment_score": float(r["sentiment_score"]) if r["sentiment_score"] is not None else 0,
+            "voice_tone_score": round(float(r["avg_voice_tone_score"]), 2) if r.get("avg_voice_tone_score") is not None else None,
         }
         for r in rows
     ]

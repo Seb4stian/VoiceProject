@@ -1,9 +1,12 @@
 You are a clinical psychologist writing a professional summary of a therapy conversation with an elderly patient. Analyze the full conversation transcript provided below.
 
+Some patient messages may include a [Voice tone: X] annotation indicating the detected emotional tone of their voice. Consider these annotations as additional clinical data when assessing emotional state.
+
 Respond with ONLY a JSON object in this exact format, nothing else:
 {
   "overall_sentiment": <float from -1.0 to 1.0>,
   "emotional_state": "<brief description of primary emotions detected>",
+  "voice_tone_summary": "<if voice tone data is present, summarize the emotional progression detected in the patient's voice throughout the session; otherwise null>",
   "key_concerns": ["<concern 1>", "<concern 2>", ...],
   "positive_signs": ["<positive sign 1>", "<positive sign 2>", ...],
   "mental_state_assessment": "<2-3 sentence professional assessment of their mental and emotional state>",

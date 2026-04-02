@@ -1,12 +1,15 @@
 """Voice Chat routes — combines TTS, STT, and psychology chat."""
 
 import io
+import json
 import os
 
 from elevenlabs import ElevenLabs
 from flask import Blueprint, jsonify, render_template, request, send_file
 from flask import session as flask_session
+from openai import OpenAI
 
+from shared import CONFIG, VOICE_TONE_PROMPT, voice_tone_to_score
 from voice import get_or_create_voice
 
 bp = Blueprint("voice_chat", __name__, url_prefix="/voice-chat")
@@ -58,22 +61,57 @@ def speak():
 
 @bp.route("/transcribe", methods=["POST"])
 def transcribe():
-    """STT for the voice chat — auto-detects language from audio."""
+    """STT for the voice chat — auto-detects language, also detects emotional tone."""
     audio = request.files.get("audio")
     if audio is None:
         return jsonify({"error": "No audio file provided"}), 400
 
-    api_key = os.environ.get("ELEVENLABS_API_KEY")
-    if not api_key:
+    el_key = os.environ.get("ELEVENLABS_API_KEY")
+    if not el_key:
         return jsonify({"error": "ELEVENLABS_API_KEY environment variable is not set"}), 500
 
-    client = ElevenLabs(api_key=api_key)
+    # Read audio bytes so we can reuse the stream
+    audio_bytes = audio.stream.read()
+
+    client = ElevenLabs(api_key=el_key)
 
     try:
         result = client.speech_to_text.convert(
-            file=audio.stream,
+            file=io.BytesIO(audio_bytes),
             model_id="scribe_v1",
         )
-        return jsonify({"text": result.text})
+        text = result.text
     except Exception as exc:
         return jsonify({"error": f"Transcription failed: {exc}"}), 500
+
+    # Analyze emotional tone from the transcribed text
+    voice_tone = None
+    voice_tone_score = None
+    if text and text.strip():
+        try:
+            oai_key = os.environ.get("OPENAI_API_KEY")
+            if oai_key:
+                oai_client = OpenAI(api_key=oai_key)
+                model = CONFIG.get("openai_model", "gpt-4o-mini")
+                tone_response = oai_client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": "You are an emotion analysis expert. Respond only with valid JSON."},
+                        {"role": "user", "content": VOICE_TONE_PROMPT + text.strip()},
+                    ],
+                    temperature=0,
+                )
+                raw_tone = tone_response.choices[0].message.content.strip()
+                tone_data = json.loads(raw_tone)
+                voice_tone = tone_data.get("tone", "neutral").lower()
+                if voice_tone not in ("happy", "sad", "angry", "anxious", "calm", "neutral", "fearful", "surprised"):
+                    voice_tone = "neutral"
+                voice_tone_score = voice_tone_to_score(voice_tone)
+        except Exception:
+            pass  # Tone analysis is best-effort; don't block transcription
+
+    return jsonify({
+        "text": text,
+        "voice_tone": voice_tone,
+        "voice_tone_score": voice_tone_score,
+    })

@@ -158,13 +158,16 @@ def save_chat_message(
     content: str,
     sentiment_score: float | None = None,
     sentiment_label: str | None = None,
+    voice_tone: str | None = None,
+    voice_tone_score: float | None = None,
 ):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute(
                 _chat_queries["save_message"],
-                (session_id, role, content, sentiment_score, sentiment_label),
+                (session_id, role, content, sentiment_score, sentiment_label,
+                 voice_tone, voice_tone_score),
             )
         conn.commit()
     finally:

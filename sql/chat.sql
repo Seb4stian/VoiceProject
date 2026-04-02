@@ -15,11 +15,11 @@ SET ended_at     = CURRENT_TIMESTAMP,
 WHERE id = %s AND user_id = %s;
 
 -- name: save_message
-INSERT INTO chat_messages (session_id, role, content, sentiment_score, sentiment_label)
-VALUES (%s, %s, %s, %s, %s);
+INSERT INTO chat_messages (session_id, role, content, sentiment_score, sentiment_label, voice_tone, voice_tone_score)
+VALUES (%s, %s, %s, %s, %s, %s, %s);
 
 -- name: get_session_messages
-SELECT role, content, sentiment_score, sentiment_label, created_at
+SELECT role, content, sentiment_score, sentiment_label, voice_tone, voice_tone_score, created_at
 FROM chat_messages
 WHERE session_id = %s
 ORDER BY created_at;
@@ -40,11 +40,17 @@ WHERE user_id = %s
 ORDER BY started_at DESC;
 
 -- name: get_session_timeline
-SELECT id,
-       started_at,
-       (summary_json->>'overall_sentiment')::REAL AS sentiment_score
-FROM chat_sessions
-WHERE user_id = %s
-  AND ended_at IS NOT NULL
-  AND summary_json IS NOT NULL
-ORDER BY started_at ASC;
+SELECT cs.id,
+       cs.started_at,
+       (cs.summary_json->>'overall_sentiment')::REAL AS sentiment_score,
+       AVG(cm.voice_tone_score) AS avg_voice_tone_score
+FROM chat_sessions cs
+LEFT JOIN chat_messages cm
+       ON cm.session_id = cs.id
+      AND cm.role = 'user'
+      AND cm.voice_tone_score IS NOT NULL
+WHERE cs.user_id = %s
+  AND cs.ended_at IS NOT NULL
+  AND cs.summary_json IS NOT NULL
+GROUP BY cs.id, cs.started_at, cs.summary_json
+ORDER BY cs.started_at ASC;
